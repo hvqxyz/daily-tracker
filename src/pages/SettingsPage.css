@@ -1,0 +1,64 @@
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.settings-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.5rem;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.settings-list-row:hover {
+  background: var(--page);
+}
+
+.category-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.settings-row-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-row-title {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.settings-row-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.settings-row-edit-icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.waking-hours-field {
+  margin-bottom: 0;
+}
+
+.waking-hours-field .number-input {
+  max-width: 120px;
+}

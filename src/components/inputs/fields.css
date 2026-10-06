@@ -1,0 +1,55 @@
+/* Shared look for text/number/select/time inputs so they read as one family. */
+
+.field-input,
+.text-input,
+.number-input,
+.select-input,
+.time-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.55rem 0.75rem;
+  background: var(--page);
+  color: var(--text-primary);
+  border: 1px solid var(--gridline);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color .15s ease;
+}
+
+.field-input:focus,
+.text-input:focus,
+.number-input:focus,
+.select-input:focus,
+.time-input:focus {
+  border-color: var(--accent-solid);
+}
+
+.field-input::placeholder,
+.text-input::placeholder,
+.number-input::placeholder {
+  color: var(--muted);
+}
+
+.field-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 0.3rem 0.05rem;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.85rem;
+}
+
+.field-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.field-row .field-group {
+  flex: 1;
+}

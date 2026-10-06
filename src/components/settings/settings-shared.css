@@ -1,0 +1,31 @@
+.color-swatch-input {
+  width: 100%;
+  height: 42px;
+  padding: 3px;
+  background: var(--page);
+  border: 1px solid var(--gridline);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.weekday-picker {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.weekday-chip {
+  flex: 1;
+  padding: 0.45rem 0.2rem;
+  border-radius: 8px;
+  border: 1px solid var(--gridline);
+  background: var(--page);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.weekday-chip.selected {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  color: #fff;
+}

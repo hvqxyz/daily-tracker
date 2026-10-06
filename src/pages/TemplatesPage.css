@@ -1,0 +1,101 @@
+.templates-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.templates-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.templates-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.template-card {
+  padding: 0.9rem;
+}
+
+.template-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.template-card-icon {
+  font-size: 1.5rem;
+}
+
+.template-card-tools {
+  display: flex;
+  gap: 0.1rem;
+}
+
+.template-icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.2rem;
+}
+
+.template-card-name {
+  margin: 0.3rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.template-card-sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.template-card-chips {
+  display: flex;
+  gap: 0.2rem;
+  margin-top: 0.2rem;
+}
+
+.template-mini-chip {
+  font-size: 0.9rem;
+}
+
+.template-mini-chip.more {
+  font-size: 0.68rem;
+  color: var(--muted);
+  align-self: center;
+}
+
+.template-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+
+.template-card-actions .app-button {
+  flex: 1;
+  padding: 0.4rem 0.4rem;
+}
+
+.template-delete-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.3rem;
+  flex-shrink: 0;
+}
+
+.template-delete-btn:hover {
+  color: var(--critical);
+}
+
+@media (max-width: 420px) {
+  .templates-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,158 @@
+.day-carousel {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+
+.day-carousel-nav {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  border: 1px solid var(--gridline);
+  border-radius: 50%;
+
+  background: transparent;
+  color: var(--text-secondary);
+
+  transition: .18s;
+}
+
+.day-carousel-nav:hover {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  color: var(--text-primary);
+}
+
+.day-carousel-strip {
+  flex: 1;
+
+  display: flex;
+  gap: .55rem;
+
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  scroll-behavior: smooth;
+}
+
+.day-carousel-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.date-pill {
+  flex-shrink: 0;
+
+  height: 42px;
+  min-width: 64px;
+
+  padding: 0 1.1rem;
+
+  border: 1px solid var(--gridline);
+  border-radius: 999px;
+
+  background: var(--page);
+
+  color: var(--text-secondary);
+
+  font-size: .92rem;
+  font-weight: 500;
+
+  transition: .18s;
+}
+
+.date-pill:hover {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+
+.date-pill.selected {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+
+  color: white;
+}
+
+.date-pill.today:not(.selected) {
+  border-color: var(--accent-solid);
+}
+
+.dow {
+  margin-bottom: .15rem;
+
+  font-size: .80rem;
+  font-weight: 500;
+  line-height: 1;
+
+  color: var(--text-secondary);
+}
+
+.day {
+  font-size: .80rem;
+  font-weight: 500;
+  line-height: 1;
+
+  color: var(--text-primary);
+}
+
+.date-pill.selected .dow,
+.date-pill.selected .day {
+  color: white;
+}
+
+@media (max-width: 768px) {
+
+  .day-carousel {
+    padding: .4rem;
+    gap: .4rem;
+  }
+
+  .day-carousel-nav,
+  .day-carousel-icon {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .date-pill {
+    width: 56px;
+    height: 48px;
+  }
+
+  .date-pill.selected {
+    width: 72px;
+  }
+
+  .dow {
+    font-size: .68rem;
+  }
+
+  .day {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+
+  .day-carousel {
+    gap: .3rem;
+  }
+
+  .date-pill {
+    width: 52px;
+    height: 46px;
+  }
+
+  .date-pill.selected {
+    width: 66px;
+  }
+
+  .dow {
+    font-size: .64rem;
+  }
+
+  .day {
+    font-size: 1.05rem;
+  }
+}

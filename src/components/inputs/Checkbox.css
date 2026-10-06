@@ -1,0 +1,44 @@
+.checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-field input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.checkbox-field-ui {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1px solid var(--gridline);
+  background: var(--page);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.checkbox-field-ui svg {
+  width: 15px;
+  height: 15px;
+}
+
+.checkbox-field input:checked + .checkbox-field-ui {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  color: #fff;
+}
+
+.checkbox-field-label {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}

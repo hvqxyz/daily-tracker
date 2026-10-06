@@ -1,0 +1,352 @@
+.timeline-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 150px;
+}
+
+/* The only scrolling region on the Today page. */
+.timeline-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 1rem;
+  padding: 0.5rem 0 5.5rem;
+  /* soft fade where content slides under the fixed header / floating button */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 44px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 44px), transparent 100%);
+}
+
+/* Flexible tray */
+
+.flexible-tray {
+  flex: none;
+  margin-bottom: 0.5rem;
+}
+
+.flexible-tray-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 0.4rem 0.1rem;
+}
+
+.flexible-tray-chips {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 0.1rem;
+}
+
+.flexible-tray-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.flexible-chip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px dashed var(--gridline);
+  border-radius: 999px;
+  cursor: grab;
+  user-select: none;
+}
+
+.flexible-chip.dragging {
+  opacity: 0.4;
+}
+
+.flexible-chip-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.flexible-chip-meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* Grid */
+
+.timeline-grid {
+  position: relative;
+  margin-left: 54px;
+  border-left: 1px solid var(--gridline);
+}
+
+.timeline-hour-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+}
+
+.timeline-hour-label {
+  position: absolute;
+  left: -54px;
+  top: -7px;
+  width: 46px;
+  text-align: right;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-hour-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  border-top: 1px solid var(--gridline);
+}
+
+.timeline-now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px solid var(--critical);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.timeline-now-dot {
+  position: absolute;
+  left: -5px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--critical);
+}
+
+/* Activity block */
+
+.activity-block {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: 10px;
+  padding: 0.4rem 0.55rem;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  transition: box-shadow .15s ease, opacity .15s ease;
+  z-index: 2;
+}
+
+.activity-block.dragging {
+  z-index: 8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  cursor: grabbing;
+}
+
+.activity-block.priority-border-required { border-left-color: var(--priority-required); }
+.activity-block.priority-border-should { border-left-color: var(--priority-should); }
+.activity-block.priority-border-optional { border-left-color: var(--priority-optional); }
+
+.activity-block.status-completed {
+  opacity: 0.62;
+}
+
+.activity-block.status-completed .activity-block-title {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
+}
+
+.activity-block.status-skipped {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.activity-block.status-in_progress {
+  background: color-mix(in srgb, var(--accent-solid) 10%, var(--surface));
+  box-shadow: 0 0 0 1px var(--accent-solid) inset;
+}
+
+.activity-block-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.activity-block-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.activity-block-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-status-icon.good { color: var(--good); flex-shrink: 0; }
+.activity-status-icon.muted { color: var(--muted); flex-shrink: 0; }
+
+.activity-block-meta {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot-sep {
+  margin: 0 0.15rem;
+  opacity: 0.6;
+}
+
+.activity-block-moved {
+  font-size: 0.68rem;
+  color: var(--accent-solid);
+  font-weight: 600;
+}
+
+.flexible-tag {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.55rem;
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.activity-block.compact .flexible-tag {
+  display: none;
+}
+
+.activity-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.activity-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 26px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--gridline);
+  transform: translateX(-50%);
+}
+
+.ghost-block {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  border: 1px dashed var(--muted);
+  border-radius: 10px;
+  opacity: 0.5;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ghost-block span {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.5rem;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+.drop-preview {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  background: rgba(54, 130, 224, 0.14);
+  border: 1.5px dashed var(--accent-solid);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-solid);
+  z-index: 6;
+  pointer-events: none;
+}
+
+.timeline-fab {
+  position: absolute;
+  right: 1.1rem;
+  bottom: 1.1rem;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-solid);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(54, 130, 224, 0.4);
+  z-index: 15;
+  transition: transform .12s ease;
+}
+
+.timeline-fab:active {
+  transform: scale(.94);
+}
+
+/* 24:00 -> the day's review begins */
+.timeline-end {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.7rem 0 0.8rem;
+  color: var(--muted);
+}
+
+.timeline-end-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gridline) 30%, var(--gridline) 70%, transparent);
+}
+
+.timeline-end-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Wide screens: keep a lane on the right for the + button so it never sits on an activity. */
+@media (min-width: 700px) {
+  .timeline-grid {
+    margin-right: 4.6rem;
+  }
+}
+
+.activity-repeat-icon {
+  flex: none;
+  color: var(--muted);
+  opacity: 0.85;
+}

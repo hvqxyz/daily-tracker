@@ -1,0 +1,60 @@
+.capacity-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+}
+
+.capacity-bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--gridline);
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.capacity-bar-fill {
+  height: 100%;
+  background: var(--accent-solid);
+  border-radius: 3px;
+  transition: width .25s ease;
+}
+
+.capacity-banner.over .capacity-bar-fill {
+  background: var(--critical);
+}
+
+.capacity-stats {
+  display: flex;
+  justify-content: space-between;
+}
+
+.capacity-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.capacity-stat-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.capacity-stat-value.critical {
+  color: var(--critical);
+}
+
+.capacity-stat-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.capacity-warning {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: var(--critical);
+  font-weight: 600;
+}

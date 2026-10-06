@@ -1,0 +1,55 @@
+.sync-copy {
+  margin: 0 0 0.9rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.sync-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+.sync-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--good);
+  flex-shrink: 0;
+}
+
+.sync-status-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sync-status-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-status-sub {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.message {
+  margin: 0.7rem 0 0;
+  font-size: 0.78rem;
+}
+
+.message.error {
+  color: var(--critical);
+}

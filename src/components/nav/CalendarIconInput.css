@@ -1,0 +1,144 @@
+.calendar-icon-input-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.calendar-icon-input {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  border: 1px solid var(--gridline);
+  border-radius: 50%;
+
+  background: transparent;
+  color: var(--text-secondary);
+
+  transition: .18s;
+
+  cursor: pointer;
+}
+
+.calendar-icon-input:hover {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  color: var(--text-primary);
+}
+
+.calendar-popup {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+
+  width: 280px;
+  max-width: calc(100vw - 2rem);
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+
+  padding: 0.75rem;
+}
+
+.calendar-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar-popup-month {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.calendar-popup-nav {
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid var(--gridline);
+  border-radius: 8px;
+
+  background: transparent;
+  color: var(--text-secondary);
+
+  transition: .15s;
+}
+
+.calendar-popup-nav:hover {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  color: var(--text-primary);
+}
+
+.calendar-popup-weekdays,
+.calendar-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-popup-weekdays {
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+
+.calendar-popup-grid {
+  gap: 2px;
+}
+
+.calendar-popup-day {
+  aspect-ratio: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid transparent;
+  border-radius: 8px;
+
+  background: transparent;
+  color: var(--text-primary);
+
+  font-size: .82rem;
+
+  transition: .15s;
+}
+
+.calendar-popup-day:hover {
+  background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+}
+
+.calendar-popup-day.outside {
+  color: var(--muted);
+}
+
+.calendar-popup-day.today:not(.selected) {
+  border-color: var(--accent-solid);
+}
+
+.calendar-popup-day.selected {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  color: #fff;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .calendar-icon-input-wrap {
+    display: none;
+  }
+}

@@ -1,0 +1,42 @@
+.scope-question {
+  margin: 0 0 0.7rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.scope-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.scope-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--gridline);
+  border-radius: 12px;
+  background: var(--page);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.scope-option:hover {
+  border-color: var(--accent-solid);
+}
+
+.scope-option.danger:hover {
+  border-color: var(--critical);
+}
+
+.scope-option strong {
+  font-size: 0.92rem;
+}
+
+.scope-option span {
+  font-size: 0.76rem;
+  color: var(--muted);
+}

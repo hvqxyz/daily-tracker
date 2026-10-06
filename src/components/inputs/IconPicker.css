@@ -1,0 +1,52 @@
+.icon-picker {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.icon-picker-current {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  background: var(--page);
+  border: 1px solid var(--gridline);
+  border-radius: 10px;
+}
+
+.icon-picker-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.25rem;
+  max-height: 92px;
+  overflow-y: auto;
+}
+
+.icon-picker-option {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.icon-picker-option:hover {
+  background: var(--page);
+}
+
+.icon-picker-option.selected {
+  background: var(--accent-solid);
+}
+
+@media (max-width: 420px) {
+  .icon-picker-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}

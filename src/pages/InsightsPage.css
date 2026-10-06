@@ -1,0 +1,110 @@
+.insights-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.week-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.week-nav-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.balance-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.balance-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 56px;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.balance-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.balance-track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--gridline);
+  overflow: hidden;
+}
+
+.balance-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width .3s ease;
+}
+
+.balance-value {
+  font-size: 0.76rem;
+  text-align: right;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-insight {
+  margin: 0.9rem 0 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--gridline);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.week-glance-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.3rem;
+}
+
+.week-glance-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.5rem 0.2rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--page);
+}
+
+.week-glance-day.today {
+  border-color: var(--accent-solid);
+}
+
+.week-glance-dow {
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.week-glance-date {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.week-glance-icons {
+  font-size: 0.78rem;
+  min-height: 1.1em;
+}
+
+.week-glance-pct {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}

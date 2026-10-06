@@ -1,0 +1,38 @@
+.repeat-picker {
+  gap: 0.45rem;
+}
+
+.repeat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.repeat-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.repeat-inline .select-input {
+  width: auto;
+  min-width: 6.5rem;
+  flex: none;
+}
+
+.repeat-num {
+  width: 4.2rem;
+  flex: none;
+}
+
+.repeat-date {
+  width: auto;
+  flex: 1;
+}
+
+.repeat-summary {
+  font-size: 0.78rem;
+  color: var(--accent-solid);
+}

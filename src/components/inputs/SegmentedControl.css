@@ -1,0 +1,28 @@
+.segmented-control {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.segmented-option {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0.4rem 0.5rem;
+  background: var(--page);
+  color: var(--text-secondary);
+  border: 1px solid var(--gridline);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.segmented-option.selected {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  color: #fff;
+}
