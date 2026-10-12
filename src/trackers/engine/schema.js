@@ -217,6 +217,7 @@ export function newItem(tracker, values = {}, parentId = null) {
     archived: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    description: '',
     values: { ...base, ...values },
   };
 }

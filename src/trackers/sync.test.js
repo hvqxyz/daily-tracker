@@ -20,7 +20,7 @@ test('trackers, items and activity links survive a Sheets round trip', () => {
   state.trackerTemplates = [{ key: 'tpl_1', name: 'Mine', icon: '🧪', fields: [], views: [], widgets: [] }];
   // an attachment: data must stay local, metadata must sync
   const tracker = state.trackers[0];
-  state.trackerItems[0] = { ...item, values: { ...item.values, file: [{ name: 'a.txt', size: 3, type: 'text/plain', data: 'data:text/plain;base64,QUJD' }] } };
+  state.trackerItems[0] = { ...item, description: 'Line one\nline two', values: { ...item.values, file: [{ name: 'a.txt', size: 3, type: 'text/plain', data: 'data:text/plain;base64,QUJD' }] } };
 
   const tables = stateToRows(state);
   const back = rowsToState(ORDER.map((n) => JSON.parse(JSON.stringify(tables[n]))), { ...state, trackers: [], trackerItems: [] });
@@ -33,6 +33,7 @@ test('trackers, items and activity links survive a Sheets round trip', () => {
   assert.equal(back.trackerItems.length, state.trackerItems.length);
   const restored = back.trackerItems.find((i) => i.id === item.id);
   assert.equal(restored.createdAt, item.createdAt);
+  assert.equal(restored.description, 'Line one\nline two');
   assert.deepEqual(Object.keys(restored.values).sort(), Object.keys(state.trackerItems[0].values).sort());
   assert.equal(restored.values.file[0].data, undefined);
   assert.equal(restored.values.file[0].name, 'a.txt');

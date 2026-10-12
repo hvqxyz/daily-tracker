@@ -4,7 +4,7 @@
 
 import { getState, mutateState, addActivity } from '../common/store.js';
 import { createOption } from './engine/fieldTypes.js';
-import { createView, ensureDefaultView, mapValuesToTracker, newItem, wouldCycle } from './engine/schema.js';
+import { createView, ensureDefaultView, mapValuesToTracker, moveInList, newItem, wouldCycle } from './engine/schema.js';
 import { makeCtx, itemLabel, titleField, getValue } from './engine/data.js';
 import { newId } from './engine/ids.js';
 import { todayKey } from '../common/time.js';
@@ -29,6 +29,18 @@ export function addTracker(tracker, items = []) {
   const withDefault = ready.settings.defaultViewId ? ready : { ...ready, settings: { ...ready.settings, defaultViewId: ready.views[0].id } };
   mutateState((s) => ({ ...s, trackers: [...s.trackers, withDefault], trackerItems: [...s.trackerItems, ...items] }));
   return withDefault;
+}
+
+/** Moves a tracker in the tab order so it lands just before (or after) `targetId`. */
+export function moveTracker(trackerId, targetId, after = false) {
+  mutateState((s) => {
+    const from = s.trackers.findIndex((t) => t.id === trackerId);
+    const target = s.trackers.findIndex((t) => t.id === targetId);
+    if (from < 0 || target < 0 || from === target) return s;
+    let to = target + (after ? 1 : 0);
+    if (from < to) to -= 1;
+    return { ...s, trackers: moveInList(s.trackers, from, to) };
+  });
 }
 
 /**
@@ -161,15 +173,15 @@ export function deleteTrackerTemplate(key) {
 // ---------------------------------------------------------------------------
 // Items
 
-export function addItem(trackerId, values = {}, parentId = null) {
+export function addItem(trackerId, values = {}, parentId = null, extra = {}) {
   const tracker = trackerById(getState(), trackerId);
   if (!tracker) return null;
-  const item = newItem(tracker, values, parentId);
+  const item = { ...newItem(tracker, values, parentId), ...extra };
   mutateState((s) => ({ ...s, trackerItems: [...s.trackerItems, item] }));
   return item;
 }
 
-/** Merges `values` into an item; `extra` may carry parentId / archived. */
+/** Merges `values` into an item; `extra` may carry parentId / archived / description. */
 export function updateItem(itemId, values = {}, extra = {}) {
   mutateState((s) => ({
     ...s,
@@ -221,7 +233,7 @@ export function duplicateItem(itemId) {
   const tf = titleField(tracker);
   const values = { ...src.values };
   if (tf && tf.type !== 'formula' && typeof values[tf.id] === 'string') values[tf.id] = `${values[tf.id]} (copy)`;
-  const copy = { ...newItem(tracker, {}, src.parentId), values };
+  const copy = { ...newItem(tracker, {}, src.parentId), description: src.description || '', values };
   mutateState((st) => ({ ...st, trackerItems: [...st.trackerItems, copy] }));
   return copy;
 }

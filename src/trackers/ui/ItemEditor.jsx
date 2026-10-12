@@ -13,6 +13,7 @@ export function ItemEditor({ tracker, item, initialValues, parentId = null, ctx,
   const seed = useMemo(() => (isEdit ? item : newItem(tracker, initialValues || {}, parentId)), [isEdit, item, tracker, initialValues, parentId]);
   const [values, setValues] = useState(() => ({ ...seed.values }));
   const [parent, setParent] = useState(seed.parentId || '');
+  const [description, setDescription] = useState(seed.description || '');
   const [missing, setMissing] = useState([]);
 
   const parentOptions = tracker.settings?.allowHierarchy
@@ -40,8 +41,8 @@ export function ItemEditor({ tracker, item, initialValues, parentId = null, ctx,
       setMissing(lacking);
       return;
     }
-    if (isEdit) updateItem(item.id, values, { parentId: parent || null });
-    else addItem(tracker.id, values, parent || null);
+    if (isEdit) updateItem(item.id, values, { parentId: parent || null, description });
+    else addItem(tracker.id, values, parent || null, { description });
     onSaved?.();
     onClose();
   }
@@ -59,6 +60,11 @@ export function ItemEditor({ tracker, item, initialValues, parentId = null, ctx,
           allItems={allItems}
           missing={missing}
         />
+
+        <div className="field-group">
+          <label className="field-label" htmlFor="itm-description">Description</label>
+          <textarea id="itm-description" className="field-input trk-preview-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add a description…" />
+        </div>
 
         {parentOptions.length > 0 && (
           <div className="field-group">

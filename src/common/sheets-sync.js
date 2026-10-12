@@ -24,7 +24,7 @@ const SHEETS = {
   // JSON cell per tracker and item values are one JSON cell per item, so adding
   // fields or whole new trackers never changes the sheet layout.
   Trackers: { header: ['Id', 'Name', 'Icon', 'Description', 'ConfigJson'], cols: 'E' },
-  TrackerItems: { header: ['Id', 'TrackerId', 'ParentId', 'Archived', 'CreatedAt', 'UpdatedAt', 'ValuesJson'], cols: 'G' },
+  TrackerItems: { header: ['Id', 'TrackerId', 'ParentId', 'Archived', 'CreatedAt', 'UpdatedAt', 'ValuesJson', 'Description'], cols: 'H' },
   TrackerTemplates: { header: ['Key', 'Name', 'Json'], cols: 'C' },
   // Knowledge base: one row per note, one row per block (so long notes never hit
   // the 50k-character cell limit). Version history stays on this device.
@@ -199,7 +199,7 @@ export function stateToRows(state) {
     cellJson({ fields: t.fields, views: t.views, widgets: t.widgets, settings: t.settings, createdAt: t.createdAt }),
   ]);
   const trackerItems = (state.trackerItems || []).map((i) => [
-    i.id, i.trackerId, i.parentId || '', i.archived ? 'TRUE' : '', i.createdAt || '', i.updatedAt || '', cellJson(stripFileData(i.values || {})),
+    i.id, i.trackerId, i.parentId || '', i.archived ? 'TRUE' : '', i.createdAt || '', i.updatedAt || '', cellJson(stripFileData(i.values || {})), i.description || '',
   ]);
   const trackerTemplates = (state.trackerTemplates || []).map((t) => [t.key, t.name, cellJson(t)]);
 
@@ -320,7 +320,7 @@ export function rowsToState(rows, fallback) {
       settings: cfg.settings || {}, createdAt: cfg.createdAt || Date.now(),
     };
   });
-  const trackerItems = trackerItemRows.filter((r) => r[0] && r[1]).map(([id, trackerId, parentId, archived, createdAt, updatedAt, valuesJson]) => {
+  const trackerItems = trackerItemRows.filter((r) => r[0] && r[1]).map(([id, trackerId, parentId, archived, createdAt, updatedAt, valuesJson, description]) => {
     const values = parseJson(valuesJson, {});
     const local = localItems.get(id);
     if (local) {
@@ -331,7 +331,7 @@ export function rowsToState(rows, fallback) {
         }
       }
     }
-    return { id, trackerId, parentId: parentId || null, archived: archived === true || archived === 'TRUE', createdAt: createdAt || Date.now(), updatedAt: updatedAt || Date.now(), values };
+    return { id, trackerId, parentId: parentId || null, archived: archived === true || archived === 'TRUE', createdAt: createdAt || Date.now(), updatedAt: updatedAt || Date.now(), description: String(description ?? ''), values };
   });
   const trackerTemplates = templateRows.filter((r) => r[0]).map(([, , json]) => parseJson(json, null)).filter(Boolean);
 

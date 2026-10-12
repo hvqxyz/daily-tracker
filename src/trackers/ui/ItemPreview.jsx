@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal } from '../../components/Modal.jsx';
 import { Button } from '../../components/buttons/Button.jsx';
 import { FieldValue } from './FieldValue.jsx';
@@ -68,6 +68,34 @@ function QuickField({ field, item, tracker }) {
   );
 }
 
+/** Inline description editor; saves on blur, and when the preview closes with unsaved text. */
+function PreviewDescription({ item }) {
+  const [text, setText] = useState(item.description || '');
+  const latest = useRef(text);
+  latest.current = text;
+
+  const commit = () => {
+    if (latest.current !== (item.description || '')) updateItem(item.id, {}, { description: latest.current });
+  };
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  useEffect(() => () => commitRef.current(), []);
+
+  return (
+    <div className="trk-preview-long">
+      <label className="trk-hint" htmlFor={`desc-${item.id}`}>Description</label>
+      <textarea
+        id={`desc-${item.id}`}
+        className="field-input trk-preview-desc"
+        value={text}
+        placeholder="Add a description…"
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+      />
+    </div>
+  );
+}
+
 /** The tracker's one-tap progress controls for an item (also used from the Today page). */
 export function QuickFields({ tracker, item }) {
   const fields = quickFields(tracker);
@@ -117,6 +145,8 @@ export function ItemPreview({ tracker, item, ctx, notes, onClose, onEdit, onAddT
         {filled.length === 0 && <p className="trk-hint">No details yet.</p>}
       </dl>
       {hidden > 0 && <button type="button" className="trk-link-btn" onClick={() => setShowAll(true)}>Show {hidden} more</button>}
+
+      <PreviewDescription key={item.id} item={item} />
 
       {long.map((f) => (
         <div className="trk-preview-long" key={f.id}>

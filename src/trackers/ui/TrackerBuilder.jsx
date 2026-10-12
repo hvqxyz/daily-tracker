@@ -8,7 +8,7 @@ import { Checkbox } from '../../components/inputs/Checkbox.jsx';
 import { IconPicker } from '../../components/inputs/IconPicker.jsx';
 import { FieldEditor } from './FieldEditor.jsx';
 import { addTracker, addTrackerTemplate, deleteTracker, saveTracker } from '../tracker-store.js';
-import { FIELD_GROUPS, FIELD_TYPES, createField, createOption, typeInfo } from '../engine/fieldTypes.js';
+import { FIELD_GROUPS, FIELD_TYPES, createField, createOption, fieldKind, typeInfo } from '../engine/fieldTypes.js';
 import { convertField, createView, moveInList, newTracker, removeFieldFromTracker, VIEW_TYPES } from '../engine/schema.js';
 import { blueprintFromTracker, instantiateTemplate } from '../templates.js';
 import { titleField } from '../engine/data.js';
@@ -123,6 +123,9 @@ export function TrackerBuilder({ mode, tracker, trackers, allItems, state, userT
     if (draft.fields.length === 0) return 'Add at least one field.';
     const bad = draft.fields.find((f) => f.type === 'relation' && !f.config.targetTrackerId);
     if (bad) return `Choose which tracker the relation field "${bad.name}" links to.`;
+    if (!isEdit && draft.views.length === 0 && viewTypes.includes('board') && !draft.fields.some((f) => fieldKind(f) === 'select')) {
+      return 'A Board view needs a Select field for its columns. Add one, or untick Board.';
+    }
     return '';
   }
 

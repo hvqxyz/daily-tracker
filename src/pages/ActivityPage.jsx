@@ -4,6 +4,7 @@ import { Button } from '../components/buttons/Button.jsx';
 import { TrackerScreen } from '../trackers/ui/TrackerScreen.jsx';
 import { TrackerBuilder } from '../trackers/ui/TrackerBuilder.jsx';
 import { useTrackerData } from '../trackers/ui/useTrackerData.js';
+import { moveTracker } from '../trackers/tracker-store.js';
 import { TRACKER_TEMPLATES } from '../trackers/templates.js';
 import { useNavRequests } from '../common/nav.js';
 import '../trackers/ui/trackers.css';
@@ -24,6 +25,7 @@ export function ActivityPage() {
   const [selectedId, setSelectedId] = useState(loadSelected);
   const [builder, setBuilder] = useState(null); // { mode, fieldId? }
   const [openItemId, setOpenItemId] = useState(null);
+  const [drag, setDrag] = useState(null); // { id, overId?, after? } while a tab is being dragged
 
   useNavRequests('activity', (t) => {
     if (t.trackerId) setSelectedId(t.trackerId);
@@ -44,7 +46,25 @@ export function ActivityPage() {
     <div className="trk-page">
       <div className="trk-tabs" role="tablist">
         {state.trackers.map((t) => (
-          <button type="button" role="tab" aria-selected={tracker?.id === t.id} key={t.id} className={`trk-tab${tracker?.id === t.id ? ' active' : ''}`} onClick={() => setSelectedId(t.id)}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tracker?.id === t.id}
+            key={t.id}
+            className={`trk-tab${tracker?.id === t.id ? ' active' : ''}${drag?.id === t.id ? ' dragging' : ''}${drag?.overId === t.id && drag.id !== t.id ? (drag.after ? ' drop-after' : ' drop-before') : ''}`}
+            onClick={() => setSelectedId(t.id)}
+            draggable
+            onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', t.id); setDrag({ id: t.id }); }}
+            onDragOver={(e) => {
+              if (!drag) return;
+              e.preventDefault();
+              const r = e.currentTarget.getBoundingClientRect();
+              const after = e.clientX > r.left + r.width / 2;
+              if (drag.overId !== t.id || drag.after !== after) setDrag({ ...drag, overId: t.id, after });
+            }}
+            onDrop={(e) => { e.preventDefault(); if (drag && drag.id !== t.id) moveTracker(drag.id, t.id, drag.after); setDrag(null); }}
+            onDragEnd={() => setDrag(null)}
+          >
             <span className="icon-emoji">{t.icon}</span> {t.name}
           </button>
         ))}

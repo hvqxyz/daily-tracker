@@ -33,8 +33,11 @@ export function ViewEditor({ tracker, view, onClose, onSubmit }) {
     }));
   }
 
+  const problem = type === 'board' && !selects.some((f) => f.id === config.boardFieldId) ? 'Choose the Select field that defines the board columns.' : '';
+
   function handleSubmit(e) {
     e.preventDefault();
+    if (problem) return;
     onSubmit({ name: name.trim() || VIEW_TYPES.find((t) => t.value === type).label, type, config });
   }
 
@@ -81,7 +84,7 @@ export function ViewEditor({ tracker, view, onClose, onSubmit }) {
 
         <div className="app-modal-actions">
           <Button type="button" variant="subtle" onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="primary">{isEdit ? 'Save' : 'Create view'}</Button>
+          <Button type="submit" variant="primary" disabled={Boolean(problem)} title={problem || undefined}>{isEdit ? 'Save' : 'Create view'}</Button>
         </div>
       </form>
     </Modal>

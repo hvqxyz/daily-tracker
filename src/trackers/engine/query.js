@@ -187,6 +187,7 @@ export function sortItems(items, sorts, tracker, ctx) {
 export function matchesSearch(item, term, tracker, ctx) {
   const needle = term.trim().toLowerCase();
   if (!needle) return true;
+  if (item.description?.toLowerCase().includes(needle)) return true;
   for (const field of tracker.fields) {
     if (field.type === 'file') continue;
     const v = getValue(item, field, ctx);
