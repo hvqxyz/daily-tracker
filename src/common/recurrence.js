@@ -12,6 +12,8 @@
 import { keyToDate, dateToKey, shiftDateKey, weekdayIndex } from './time.js';
 
 export const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+/** Quick picks for "Specific days" (Mon=0). */
+export const WEEKDAY_PRESETS = { weekdays: [0, 1, 2, 3, 4], weekend: [5, 6] };
 export const OVERRIDABLE = ['title', 'icon', 'categoryId', 'priority', 'start', 'duration', 'fixed', 'notes'];
 
 const MS_DAY = 86400000;
@@ -160,8 +162,11 @@ export function describeRule(rule, fmt = (k) => k) {
   let text;
   if (rule.freq === 'daily') text = n === 1 ? 'Every day' : `Every ${n} days`;
   else if (rule.freq === 'weekly') {
+    const set = [...(rule.weekdays || [])].sort().join(',');
     const days = (rule.weekdays?.length ? rule.weekdays : []).map((d) => WEEKDAY_SHORT[d]).join(', ');
-    text = `${n === 1 ? 'Weekly' : `Every ${n} weeks`}${days ? ` on ${days}` : ''}`;
+    if (n === 1 && set === WEEKDAY_PRESETS.weekdays.join(',')) text = 'Every weekday (Mon–Fri)';
+    else if (n === 1 && set === WEEKDAY_PRESETS.weekend.join(',')) text = 'Every weekend (Sat, Sun)';
+    else text = `${n === 1 ? 'Weekly' : `Every ${n} weeks`}${days ? ` on ${days}` : ''}`;
   } else {
     const day = rule.monthDay === 'last' ? 'the last day' : `day ${rule.monthDay || 1}`;
     text = `${n === 1 ? 'Monthly' : `Every ${n} months`} on ${day}`;
@@ -183,7 +188,8 @@ export function repeatToRule(repeat, startDate) {
 
   switch (repeat.mode) {
     case 'daily': return { ...base, freq: 'daily', interval: 1, weekdays: [], monthDay: null };
-    case 'weekly': return { ...base, freq: 'weekly', interval: 1, weekdays: [...repeat.weekdays].sort(), monthDay: null };
+    case 'weekly':
+    case 'days': return { ...base, freq: 'weekly', interval: 1, weekdays: [...repeat.weekdays].sort(), monthDay: null };
     case 'monthly': return { ...base, freq: 'monthly', interval: 1, weekdays: [], monthDay };
     case 'custom': {
       if (repeat.unit === 'weeks') return { ...base, freq: 'weekly', interval, weekdays: [...repeat.weekdays].sort(), monthDay: null };
@@ -213,12 +219,14 @@ export function ruleToRepeat(rule) {
     endDate: rule.endDate || '',
     count: rule.count || 10,
   };
+  // a weekly series on several days (or not on its start's weekday) opens as "Specific days"
+  if (n === 1 && rule.freq === 'weekly' && (repeat.weekdays.length > 1 || repeat.weekdays[0] !== base.weekdays[0])) return { ...repeat, mode: 'days' };
   if (n === 1) return { ...repeat, mode: rule.freq };
   return { ...repeat, mode: 'custom', unit: rule.freq === 'weekly' ? 'weeks' : rule.freq === 'monthly' ? 'months' : 'days' };
 }
 
 export function validateRepeat(repeat) {
-  if (repeat.mode === 'weekly' && repeat.weekdays.length === 0) return 'Pick at least one weekday.';
+  if ((repeat.mode === 'weekly' || repeat.mode === 'days') && repeat.weekdays.length === 0) return 'Pick at least one weekday.';
   if (repeat.mode === 'custom' && repeat.unit === 'weeks' && repeat.weekdays.length === 0) return 'Pick at least one weekday.';
   if (repeat.endMode === 'date' && !repeat.endDate) return 'Choose an end date.';
   return '';
@@ -343,6 +351,52 @@ export function materializeOccurrence(state, dateKey, activityId) {
   if (!virtual) return state;
   const { virtual: _v, ...stored } = virtual;
   return { ...state, days: { ...state.days, [dateKey]: { ...day, activities: [...day.activities, stored] } } };
+}
+
+/**
+ * Done / skipped / back to planned for one activity (an implied occurrence is
+ * stored first, exactly once). Completing or skipping records what actually
+ * happened: the start and duration at that moment.
+ */
+export function setActivityStatusState(state, dateKey, activityId, status) {
+  const base = materializeOccurrence(state, dateKey, activityId);
+  const day = base.days[dateKey] || { activities: [], materializedRuleIds: [] };
+  const activities = day.activities.map((act) => {
+    if (act.id !== activityId) return act;
+    if (status === 'completed' || status === 'skipped') {
+      return { ...act, status, actualStart: act.start, actualDuration: act.duration };
+    }
+    return { ...act, status };
+  });
+  return { ...base, days: { ...base.days, [dateKey]: { ...day, activities } } };
+}
+
+/** A new rule from an activity's fields and a schedule (repeatToRule). Every reference is kept. */
+export function ruleFromFields(fields, schedule, dateKey, { id, defaultCategoryId, createdAt = Date.now() }) {
+  return normalizeRule({
+    id,
+    title: fields.title,
+    icon: fields.icon || '🔁',
+    categoryId: fields.categoryId || defaultCategoryId,
+    priority: fields.priority || 'required', // same default as a one-off activity
+    start: fields.start ?? null, // null = flexible: shown in the day's Flexible tray
+    duration: fields.duration ?? 30,
+    fixed: fields.fixed !== false,
+    notes: fields.notes || '',
+    ...(fields.link ? { link: fields.link } : {}),
+    ...(fields.noteId ? { noteId: fields.noteId } : {}),
+    ...(fields.activityId ? { activityId: fields.activityId } : {}),
+    createdAt,
+    ...schedule,
+  }, dateKey);
+}
+
+/**
+ * Ends a series after `lastDate`: nothing is generated later and later
+ * not-yet-done stored occurrences go; the rule and every earlier day stay.
+ */
+export function endSeries(state, ruleId, lastDate) {
+  return deleteSeriesFrom(state, ruleId, shiftDateKey(lastDate, 1));
 }
 
 /** Which fields of a changed activity differ from the stored one (recorded as per-occurrence overrides). */

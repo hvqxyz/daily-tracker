@@ -62,3 +62,24 @@
 .waking-hours-field .number-input {
   max-width: 120px;
 }
+
+.settings-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.3rem 0.4rem 0.3rem 0.1rem;
+  border: none;
+  background: transparent;
+  color: var(--accent-solid);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-back:hover,
+.settings-back:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}

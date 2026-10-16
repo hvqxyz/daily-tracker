@@ -36,3 +36,38 @@
   font-size: 0.78rem;
   color: var(--accent-solid);
 }
+
+.repeat-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.weekday-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.weekday-preset {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--gridline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.weekday-preset:hover,
+.weekday-preset:focus-visible {
+  border-color: var(--accent-solid);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.weekday-preset.selected {
+  border-color: var(--accent-solid);
+  color: var(--accent-solid);
+}

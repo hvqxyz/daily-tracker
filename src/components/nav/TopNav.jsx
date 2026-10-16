@@ -1,9 +1,8 @@
-import { CalendarDays, LayoutTemplate, BarChart3, Settings, Sun, Activity, NotebookPen, Plus } from 'lucide-react';
+import { CalendarDays, BarChart3, Settings, Sun, Activity, NotebookPen, Plus } from 'lucide-react';
 
 const NAV_ITEMS = [
   { id: 'today', label: 'Today', icon: Sun },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
-  { id: 'templates', label: 'Templates', icon: LayoutTemplate },
   { id: 'activity', label: 'Activity', icon: Activity },
   { id: 'notes', label: 'Notes', icon: NotebookPen },
   { id: 'insights', label: 'Insights', icon: BarChart3 },

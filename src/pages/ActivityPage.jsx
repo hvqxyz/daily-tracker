@@ -7,9 +7,11 @@ import { useTrackerData } from '../trackers/ui/useTrackerData.js';
 import { moveTracker } from '../trackers/tracker-store.js';
 import { TRACKER_TEMPLATES } from '../trackers/templates.js';
 import { useNavRequests } from '../common/nav.js';
+import { RecurringTodos } from '../components/todos/RecurringTodos.jsx';
 import '../trackers/ui/trackers.css';
 
 const SELECTED_KEY = 'daily-planner-selected-tracker';
+const RECURRING = '__recurring'; // the Recurring to-dos tab (not a tracker)
 
 function loadSelected() {
   try {
@@ -28,23 +30,35 @@ export function ActivityPage() {
   const [drag, setDrag] = useState(null); // { id, overId?, after? } while a tab is being dragged
 
   useNavRequests('activity', (t) => {
+    if (t.view === 'recurring') setSelectedId(RECURRING);
     if (t.trackerId) setSelectedId(t.trackerId);
     if (t.itemId) setOpenItemId(t.itemId);
   });
 
-  const tracker = state.trackers.find((t) => t.id === selectedId) || state.trackers[0];
+  const showRecurring = selectedId === RECURRING;
+  const tracker = showRecurring ? null : state.trackers.find((t) => t.id === selectedId) || state.trackers[0];
 
   useEffect(() => {
     try {
-      if (tracker) localStorage.setItem(SELECTED_KEY, tracker.id);
+      if (showRecurring) localStorage.setItem(SELECTED_KEY, RECURRING);
+      else if (tracker) localStorage.setItem(SELECTED_KEY, tracker.id);
     } catch {
       // storage unavailable — selection just won't be remembered
     }
-  }, [tracker]);
+  }, [tracker, showRecurring]);
 
   return (
     <div className="trk-page">
       <div className="trk-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={showRecurring}
+          className={`trk-tab${showRecurring ? ' active' : ''}`}
+          onClick={() => setSelectedId(RECURRING)}
+        >
+          <span className="icon-emoji">🔁</span> Recurring to-dos
+        </button>
         {state.trackers.map((t) => (
           <button
             type="button"
@@ -71,7 +85,9 @@ export function ActivityPage() {
         <button type="button" className="trk-tab new" onClick={() => setBuilder({ mode: 'create' })}><Plus size={14} /> New tracker</button>
       </div>
 
-      {tracker ? (
+      {showRecurring ? (
+        <RecurringTodos state={state} ctx={ctx} />
+      ) : tracker ? (
         <TrackerScreen key={tracker.id} tracker={tracker} state={state} ctx={ctx} openItemId={openItemId} onItemOpened={() => setOpenItemId(null)} onOpenSettings={(fieldId) => setBuilder({ mode: 'edit', fieldId })} />
       ) : (
         <div className="empty-state trk-welcome">

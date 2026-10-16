@@ -1,15 +1,10 @@
-import { useState } from 'react';
-import { Plus, Pencil } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Pencil, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react';
 import {
   useStore,
   addCategory,
   updateCategory,
   deleteCategory,
-  addRecurrence,
-  deleteRecurrence,
-  pauseSeries,
-  resumeSeries,
-  updateSeries,
   updateSettings,
   addDictionaryItem,
   updateDictionaryItem,
@@ -19,21 +14,22 @@ import { Card } from '../components/Card.jsx';
 import { Button } from '../components/buttons/Button.jsx';
 import { NumberInput } from '../components/inputs/NumberInput.jsx';
 import { CategoryEditor } from '../components/settings/CategoryEditor.jsx';
-import { RecurrenceEditor } from '../components/settings/RecurrenceEditor.jsx';
 import { SyncCard } from '../components/settings/SyncCard.jsx';
+import { TemplatesPage } from './TemplatesPage.jsx';
 import { LibraryActivityEditor, DeleteActivityDialog } from '../components/library/LibraryActivityEditor.jsx';
 import { categoryInfo } from '../common/model.js';
 import { libraryReferences } from '../common/library.js';
 import { FilterRow } from '../components/library/FilterRow.jsx';
-import { formatDuration, formatDateDMY, minutesToClock, todayKey } from '../common/time.js';
+import { formatDuration, minutesToClock } from '../common/time.js';
 import '../components/library/library.css';
-import { describeRule, repeatToRule } from '../common/recurrence.js';
+import { requestNav } from '../common/nav.js';
 import './SettingsPage.css';
 
-export function SettingsPage() {
+export function SettingsPage({ onOpenDay }) {
   const state = useStore();
+  const [view, setView] = useState('main'); // 'main' | 'templates'
+  useEffect(() => { document.querySelector('main')?.scrollTo(0, 0); }, [view]);
   const [editingCategory, setEditingCategory] = useState(null); // { category } | { new: true } | null
-  const [editingRule, setEditingRule] = useState(null);
   const [editingDictItem, setEditingDictItem] = useState(null); // { item, key } | null
   const [deletingDictItem, setDeletingDictItem] = useState(null); // definition | null
   const [libQuery, setLibQuery] = useState('');
@@ -41,6 +37,17 @@ export function SettingsPage() {
   const q = libQuery.trim().toLowerCase();
   const libraryRows = state.activityDictionary.filter((it) => (!q || it.title.toLowerCase().includes(q)) && (!libCategory || it.categoryId === libCategory));
   const templateUses = (id) => state.templates.filter((t) => t.items.some((it) => it.activityId === id)).length;
+
+  if (view === 'templates') {
+    return (
+      <div className="settings-page">
+        <button type="button" className="settings-back" onClick={() => setView('main')}>
+          <ChevronLeft size={16} /> Settings
+        </button>
+        <TemplatesPage onOpenDay={onOpenDay} />
+      </div>
+    );
+  }
 
   return (
     <div className="settings-page">
@@ -105,6 +112,19 @@ export function SettingsPage() {
         )}
       </Card>
 
+      <Card title="Templates">
+        <button type="button" className="settings-list-row" onClick={() => setView('templates')}>
+          <LayoutTemplate size={18} className="settings-row-edit-icon" />
+          <div className="settings-row-info">
+            <span className="settings-row-title">Day templates</span>
+            <span className="settings-row-sub">
+              {state.templates.length} {state.templates.length === 1 ? 'template' : 'templates'} · whole-day plans built from your Activity Library
+            </span>
+          </div>
+          <ChevronRight size={16} className="settings-row-edit-icon" />
+        </button>
+      </Card>
+
       <Card title="Planning">
         <div className="field-group waking-hours-field">
           <label className="field-label">Waking hours per day (used for Available time)</label>
@@ -117,26 +137,17 @@ export function SettingsPage() {
         </div>
       </Card>
 
-      <Card
-        title="Recurring activities"
-        headerAction={<Button size="small" variant="subtle" onClick={() => setEditingRule({ rule: null })}><Plus size={15} /></Button>}
-      >
-        {state.recurrences.length === 0 ? (
-          <div className="empty-state">No recurring activities yet.</div>
-        ) : (
-          <div className="settings-list">
-            {state.recurrences.map((r) => (
-              <button type="button" key={r.id} className="settings-list-row" onClick={() => setEditingRule({ rule: r })}>
-                <span className="icon-emoji">{r.icon}</span>
-                <div className="settings-row-info">
-                  <span className="settings-row-title">{r.title}</span>
-                  <span className="settings-row-sub">{describeRule(r, formatDateDMY)} · {formatDuration(r.duration)}</span>
-                </div>
-                <Pencil size={14} className="settings-row-edit-icon" />
-              </button>
-            ))}
+      <Card title="Recurring activities">
+        <button type="button" className="settings-list-row" onClick={() => requestNav({ page: 'activity', view: 'recurring' })}>
+          <span className="icon-emoji">🔁</span>
+          <div className="settings-row-info">
+            <span className="settings-row-title">Recurring to-dos</span>
+            <span className="settings-row-sub">
+              {state.recurrences.length} series · create, pause, end and see history in Activity → Recurring to-dos
+            </span>
           </div>
-        )}
+          <ChevronRight size={16} className="settings-row-edit-icon" />
+        </button>
       </Card>
 
       {editingCategory && (
@@ -178,21 +189,6 @@ export function SettingsPage() {
         />
       )}
 
-      {editingRule && (
-        <RecurrenceEditor
-          open
-          rule={editingRule.rule}
-          categories={state.categories}
-          onClose={() => setEditingRule(null)}
-          onSubmit={({ fields, repeat }) => {
-            if (editingRule.rule) updateSeries(editingRule.rule.id, fields, repeat);
-            else addRecurrence({ ...fields, ...repeatToRule(repeat, todayKey()) });
-            setEditingRule(null);
-          }}
-          onTogglePause={editingRule.rule ? () => { if (editingRule.rule.pausedFrom) resumeSeries(editingRule.rule.id); else pauseSeries(editingRule.rule.id, todayKey()); setEditingRule(null); } : null}
-          onDelete={() => { deleteRecurrence(editingRule.rule.id); setEditingRule(null); }}
-        />
-      )}
     </div>
   );
 }

@@ -77,3 +77,16 @@ test('a pull keeps this device\'s migration notice and recent activities', () =>
   assert.deepEqual(back.libraryNotice, state.libraryNotice);
   assert.deepEqual(back.recentActivities, state.recentActivities);
 });
+
+test('recurring to-dos: paused rules, links and completed occurrences survive a Sheets round trip without duplicates', async () => {
+  const { resolveDay, setActivityStatusState, occurrenceId } = await import('./recurrence.js');
+  let state = migratedSeed();
+  state.recurrences = [{ id: 'rec_t', title: 'Plants', icon: '🪴', categoryId: 'life', priority: 'required', start: null, duration: 10, fixed: false, freq: 'daily', interval: 1, weekdays: [], monthDay: null, startDate: '2026-10-01', endDate: null, count: null, pausedFrom: '2026-12-01', exceptDates: [], notes: 'n', createdAt: 1, activityId: 'ad_p', link: { trackerId: 't', itemId: 'i' } }];
+  state = setActivityStatusState(state, '2026-10-12', occurrenceId('rec_t', '2026-10-12'), 'completed');
+  const back = roundTrip(stateToRows(state), state);
+  assert.equal(back.recurrences[0].pausedFrom, '2026-12-01');
+  assert.deepEqual([back.recurrences[0].activityId, back.recurrences[0].link, back.recurrences[0].notes], ['ad_p', { trackerId: 't', itemId: 'i' }, 'n']);
+  const day = resolveDay(back, '2026-10-12').activities.filter((a) => a.recurrenceId === 'rec_t');
+  assert.equal(day.length, 1);
+  assert.deepEqual([day[0].status, day[0].activityId, day[0].link?.itemId], ['completed', 'ad_p', 'i']);
+});

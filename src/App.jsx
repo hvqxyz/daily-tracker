@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { TopNav } from './components/nav/TopNav.jsx';
 import { TodayPage } from './pages/TodayPage.jsx';
 import { CalendarPage } from './pages/CalendarPage.jsx';
-import { TemplatesPage } from './pages/TemplatesPage.jsx';
 import { ActivityPage } from './pages/ActivityPage.jsx';
 import { InsightsPage } from './pages/InsightsPage.jsx';
 import { SettingsPage } from './pages/SettingsPage.jsx';
@@ -56,11 +55,10 @@ function App() {
       <main ref={mainRef} className={page === 'today' ? 'no-scroll' : ''}>
         {page === 'today' && <TodayPage selectedDate={selectedDate} onSelectedDateChange={setSelectedDate} />}
         {page === 'calendar' && <CalendarPage selectedDate={selectedDate} onOpenDay={openDay} />}
-        {page === 'templates' && <TemplatesPage onOpenDay={openDay} />}
         {page === 'activity' && <ActivityPage />}
         {page === 'insights' && <InsightsPage onOpenDay={openDay} />}
         {page === 'notes' && <NotesPage />}
-        {page === 'settings' && <SettingsPage />}
+        {page === 'settings' && <SettingsPage onOpenDay={openDay} />}
       </main>
       {quickNote && (
         <QuickNoteModal

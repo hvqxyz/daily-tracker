@@ -1,6 +1,6 @@
 import { Select } from '../inputs/Select.jsx';
 import { Checkbox } from '../inputs/Checkbox.jsx';
-import { describeRule, repeatToRule, WEEKDAY_SHORT } from '../../common/recurrence.js';
+import { describeRule, repeatToRule, WEEKDAY_PRESETS, WEEKDAY_SHORT } from '../../common/recurrence.js';
 import { formatDateDMY } from '../../common/time.js';
 import '../settings/settings-shared.css';
 import './RepeatPicker.css';
@@ -9,20 +9,39 @@ const MODES = [
   { value: 'never', label: 'Never' },
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
+  { value: 'days', label: 'Specific days…' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'custom', label: 'Custom…' },
 ];
 
-function Weekdays({ value, onChange }) {
+const PRESETS = [
+  { label: 'Weekdays', days: WEEKDAY_PRESETS.weekdays },
+  { label: 'Weekend', days: WEEKDAY_PRESETS.weekend },
+  { label: 'Every day', days: [0, 1, 2, 3, 4, 5, 6] },
+];
+
+function Weekdays({ value, onChange, presets = false }) {
   const toggle = (i) => onChange(value.includes(i) ? value.filter((d) => d !== i) : [...value, i].sort());
+  const current = [...value].sort().join(',');
   return (
-    <div className="weekday-picker">
-      {WEEKDAY_SHORT.map((label, i) => (
-        <button type="button" key={label} className={`weekday-chip${value.includes(i) ? ' selected' : ''}`} aria-pressed={value.includes(i)} onClick={() => toggle(i)}>
-          {label}
-        </button>
-      ))}
-    </div>
+    <>
+      <div className="weekday-picker" role="group" aria-label="Days of the week">
+        {WEEKDAY_SHORT.map((label, i) => (
+          <button type="button" key={label} className={`weekday-chip${value.includes(i) ? ' selected' : ''}`} aria-pressed={value.includes(i)} onClick={() => toggle(i)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {presets && (
+        <div className="weekday-presets">
+          {PRESETS.map((p) => (
+            <button type="button" key={p.label} className={`weekday-preset${current === p.days.join(',') ? ' selected' : ''}`} onClick={() => onChange([...p.days])}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -39,6 +58,13 @@ export function RepeatPicker({ value, onChange, dateKey, allowNever = true }) {
     <div className="field-group repeat-picker">
       <label className="field-label" htmlFor="activity-repeat">Repeat</label>
       <Select id="activity-repeat" value={value.mode} onChange={(mode) => set({ mode })} options={modes} />
+
+      {value.mode === 'days' && (
+        <div className="repeat-block">
+          <span className="repeat-hint">Pick the days it repeats on — e.g. Mon and Thu.</span>
+          <Weekdays value={value.weekdays} onChange={(weekdays) => set({ weekdays })} presets />
+        </div>
+      )}
 
       {value.mode === 'weekly' && (
         <div className="repeat-block"><Weekdays value={value.weekdays} onChange={(weekdays) => set({ weekdays })} /></div>
@@ -59,7 +85,7 @@ export function RepeatPicker({ value, onChange, dateKey, allowNever = true }) {
             <input type="number" className="number-input repeat-num" min={1} max={365} value={value.interval} onChange={(e) => set({ interval: e.target.value })} />
             <Select value={value.unit} onChange={(unit) => set({ unit })} options={[{ value: 'days', label: 'days' }, { value: 'weeks', label: 'weeks' }, { value: 'months', label: 'months' }]} />
           </div>
-          {value.unit === 'weeks' && <Weekdays value={value.weekdays} onChange={(weekdays) => set({ weekdays })} />}
+          {value.unit === 'weeks' && <Weekdays value={value.weekdays} onChange={(weekdays) => set({ weekdays })} presets />}
           {value.unit === 'months' && (
             <div className="repeat-inline">
               <span>On day</span>

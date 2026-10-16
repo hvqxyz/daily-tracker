@@ -125,21 +125,34 @@ export function CreateActivityModal({ state, item, note, onClose, onCreated }) {
 }
 
 /** Shown after completing a linked activity: optionally record progress on the tracker item. */
-export function UpdateLinkedItemModal({ state, ctx, item, onClose }) {
+/** A select whose options can mark the whole item done (see engine/data.js isItemDone). */
+const marksItemDone = (f) => (f.type === 'select' || f.type === 'multiselect') && (f.config?.options || []).some((o) => o.done);
+
+/**
+ * After completing a linked activity: offer to update the tracker item.
+ * For a recurring to-do (`recurring`), one occurrence being done doesn't mean
+ * the item is finished, so unless the tracker explicitly asks for them,
+ * fields that would mark the item done are left out — counts, dates and
+ * progress are what a repeating task should record.
+ */
+export function UpdateLinkedItemModal({ state, ctx, item, recurring = false, onClose }) {
   const tracker = state.trackers.find((t) => t.id === item.trackerId);
   const chosen = tracker.settings?.activity?.updateFieldIds || [];
   const quick = quickFields(tracker);
+  const automatic = quick.length ? quick : tracker.fields.filter((f) => QUICK_TYPES.includes(f.type));
   const fields = chosen.length
     ? tracker.fields.filter((f) => chosen.includes(f.id))
-    : quick.length
-      ? quick
-      : tracker.fields.filter((f) => QUICK_TYPES.includes(f.type));
+    : recurring ? automatic.filter((f) => !marksItemDone(f)) : automatic;
   const [values, setValues] = useState(() => ({ ...item.values }));
 
   return (
     <Modal open onClose={onClose} className="trk-modal">
       <h3>{tracker.icon} Update "{ctx.itemLabel(item.id)}"?</h3>
-      <p className="trk-hint">Nice work. Record how far you got, or skip.</p>
+      <p className="trk-hint">
+        {recurring
+          ? 'Nice work. This to-do repeats, so record a count, date or progress — the item itself stays open.'
+          : 'Nice work. Record how far you got, or skip.'}
+      </p>
       <ItemForm
         tracker={tracker}
         item={item}

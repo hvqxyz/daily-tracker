@@ -5,8 +5,9 @@ import { buildSeed } from './seed.js';
 import { migrateState } from '../trackers/migrate.js';
 import { ensureNotesState } from '../notes/migrate.js';
 import {
-  changedFields, deleteSeriesFrom as deleteSeriesFromState, excludeOccurrence, materializeOccurrence, normalizeRule, occDate, pauseSeries as pauseSeriesState,
-  removeSeries, repeatToRule, resolveDay, resumeSeries as resumeSeriesState, splitSeries as splitSeriesState, updateSeries as updateSeriesState,
+  changedFields, deleteSeriesFrom as deleteSeriesFromState, endSeries as endSeriesState, excludeOccurrence, materializeOccurrence, normalizeRule, occDate,
+  pauseSeries as pauseSeriesState, removeSeries, repeatToRule, resolveDay, resumeSeries as resumeSeriesState, ruleFromFields, setActivityStatusState,
+  splitSeries as splitSeriesState, updateSeries as updateSeriesState,
 } from './recurrence.js';
 import { recordRecent } from './recent-activities.js';
 import {
@@ -376,16 +377,6 @@ export function recordRecentActivity(fields, sourceId = null) {
 // ---------------------------------------------------------------------------
 // Recurrences
 
-export function addRecurrence(rule) {
-  const r = normalizeRule({ id: makeId('rec'), ...rule }, todayKey());
-  commit({ ...state, recurrences: [...state.recurrences, r] });
-  return r;
-}
-
-export function updateRecurrence(id, patch) {
-  commit({ ...state, recurrences: state.recurrences.map((r) => (r.id === id ? { ...r, ...patch } : r)) });
-}
-
 /** Deletes the rule and the not-yet-done occurrences from today on; history stays. */
 export function deleteRecurrence(id) {
   commit(removeSeries(state, id, todayKey()));
@@ -395,21 +386,7 @@ export function deleteRecurrence(id) {
 export function addRecurringActivity(dateKey, fields, repeat) {
   const schedule = repeatToRule(repeat, dateKey);
   if (!schedule) return null;
-  const rule = normalizeRule({
-    id: makeId('rec'),
-    title: fields.title,
-    icon: fields.icon || '🔁',
-    categoryId: fields.categoryId || state.categories[0]?.id,
-    priority: fields.priority || 'required', // same default as a one-off activity
-    start: fields.start ?? null,
-    duration: fields.duration ?? 30,
-    fixed: fields.fixed !== false,
-    notes: fields.notes || '',
-    ...(fields.link ? { link: fields.link } : {}),
-    ...(fields.noteId ? { noteId: fields.noteId } : {}),
-    ...(fields.activityId ? { activityId: fields.activityId } : {}),
-    ...schedule,
-  }, dateKey);
+  const rule = ruleFromFields(fields, schedule, dateKey, { id: makeId('rec'), defaultCategoryId: state.categories[0]?.id });
   commit({ ...state, recurrences: [...state.recurrences, rule] });
   return rule;
 }
@@ -429,6 +406,11 @@ export function splitSeriesFrom(ruleId, dateKey, fields, repeat = null) {
 
 export function deleteSeriesFrom(ruleId, dateKey) {
   commit(deleteSeriesFromState(state, ruleId, dateKey));
+}
+
+/** Stop a series after `lastDate` (default today), keeping it and its history. */
+export function endSeries(ruleId, lastDate = todayKey()) {
+  commit(endSeriesState(state, ruleId, lastDate));
 }
 
 export function pauseSeries(ruleId, dateKey) {
@@ -537,16 +519,7 @@ export function deleteActivity(dateKey, activityId) {
 }
 
 export function setActivityStatus(dateKey, activityId, status) {
-  const base = materializeOccurrence(state, dateKey, activityId);
-  const day = ensureDay(base, dateKey);
-  const activities = day.activities.map((act) => {
-    if (act.id !== activityId) return act;
-    if (status === STATUSES.COMPLETED || status === STATUSES.SKIPPED) {
-      return { ...act, status, actualStart: act.start, actualDuration: act.duration };
-    }
-    return { ...act, status };
-  });
-  commit({ ...base, days: { ...base.days, [dateKey]: { ...day, activities } } });
+  commit(setActivityStatusState(state, dateKey, activityId, status));
 }
 
 export function moveActivityToDay(fromDateKey, activityId, toDateKey) {

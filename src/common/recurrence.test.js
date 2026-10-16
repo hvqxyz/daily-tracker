@@ -155,7 +155,15 @@ test('form <-> rule round trip and descriptions', () => {
   const custom = repeatToRule({ ...defaultRepeat(start), mode: 'custom', unit: 'weeks', interval: 2, weekdays: [6], endMode: 'date', endDate: '2026-12-31' }, start);
   assert.equal(describeRule(custom, (k) => k), 'Every 2 weeks on Sun until 2026-12-31');
   assert.deepEqual([ruleToRepeat(custom).mode, ruleToRepeat(custom).unit, ruleToRepeat(custom).endMode], ['custom', 'weeks', 'date']);
-  assert.equal(ruleToRepeat(r).mode, 'weekly');
+  assert.equal(ruleToRepeat(r).mode, 'days');                               // several weekdays open as "Specific days"
+  assert.equal(ruleToRepeat(repeatToRule({ ...defaultRepeat(start), mode: 'weekly' }, start)).mode, 'weekly');
+  const monThu = repeatToRule({ ...defaultRepeat(start), mode: 'days', weekdays: [3, 0] }, start);
+  assert.deepEqual([monThu.freq, monThu.interval, monThu.weekdays], ['weekly', 1, [0, 3]]);
+  assert.equal(describeRule(monThu), 'Weekly on Mon, Thu');
+  assert.deepEqual(['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-28'].map((d) => occursOn(monThu, d)), [true, false, false, true, true]);
+  assert.equal(describeRule(repeatToRule({ ...defaultRepeat(start), mode: 'days', weekdays: [0, 1, 2, 3, 4] }, start)), 'Every weekday (Mon–Fri)');
+  assert.equal(describeRule(repeatToRule({ ...defaultRepeat(start), mode: 'days', weekdays: [5, 6] }, start)), 'Every weekend (Sat, Sun)');
+  assert.ok(validateRepeat({ ...defaultRepeat(start), mode: 'days', weekdays: [] }));
   assert.equal(describeRule(repeatToRule({ ...defaultRepeat(start), mode: 'monthly', monthDay: 1 }, start)), 'Monthly on day 1');
   assert.equal(describeRule(repeatToRule({ ...defaultRepeat(start), mode: 'monthly', monthLast: true }, start)), 'Monthly on the last day');
   assert.equal(describeRule(repeatToRule({ ...defaultRepeat(start), mode: 'daily', endMode: 'count', count: 5 }, start)), 'Every day, 5 times');

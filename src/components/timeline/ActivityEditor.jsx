@@ -61,6 +61,7 @@ function ActivityEditorBody({
   knowledge,
   defaultStart,
   explicitSlot = false, // the user clicked this time on the timeline
+  recurringOnly = false, // creating a recurring to-do: picks open the form and repeat can't be "never"
   dateKey,
   allowRepeat = false,
   seriesRule = null,
@@ -84,7 +85,11 @@ function ActivityEditorBody({
   const [draft, setDraft] = useState(initial);
   const [panel, setPanel] = useState(null); // null | 'note' | { scope: 'edit', payload, saveToLibrary } | { scope: 'delete' }
   const [beforePick, setBeforePick] = useState(null); // the form as it was before "Change", for Back
-  const [repeat, setRepeat] = useState(() => (editingSeries && seriesRule ? ruleToRepeat(seriesRule) : defaultRepeat(dateKey || todayKey())));
+  const [repeat, setRepeat] = useState(() => {
+    if (editingSeries && seriesRule) return ruleToRepeat(seriesRule);
+    const base = defaultRepeat(dateKey || todayKey());
+    return recurringOnly ? { ...base, mode: 'daily' } : base;
+  });
   const [repeatError, setRepeatError] = useState('');
   const [showErrors, setShowErrors] = useState(false);
 
@@ -101,7 +106,8 @@ function ActivityEditorBody({
   // Adding: a pick is added straight away with its defaults (click it on the
   // timeline afterwards to fine-tune). Editing: a pick goes back to the form.
   function choose(picked) {
-    const fields = !isEdit && quickAddFields(picked, { dictionary, ...submitOpts });
+    // (a recurring to-do always goes to the form: its repeat has to be set)
+    const fields = !isEdit && !recurringOnly && quickAddFields(picked, { dictionary, ...submitOpts });
     if (fields) {
       onSubmit({ ...(showRepeat ? { repeat: null } : {}), ...fields }, { saveToLibrary: false });
       return;
@@ -328,7 +334,7 @@ function ActivityEditorBody({
 
       {showRepeat && (
         <>
-          <RepeatPicker value={repeat} onChange={(r) => { setRepeat(r); setRepeatError(''); }} dateKey={dateKey || todayKey()} allowNever={!editingSeries} />
+          <RepeatPicker value={repeat} onChange={(r) => { setRepeat(r); setRepeatError(''); }} dateKey={dateKey || todayKey()} allowNever={!editingSeries && !recurringOnly} />
           {repeatError && <p className="repeat-error" role="alert">{repeatError}</p>}
         </>
       )}
