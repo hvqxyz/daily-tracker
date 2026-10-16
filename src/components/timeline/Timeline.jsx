@@ -18,7 +18,8 @@ export function Timeline({
   onSetStart,
   onSetDuration,
   onOpenActivity,
-  onQuickAddAt,
+  onAddAtSlot, // (minutes) — an empty slot was clicked
+  onAdd, // the + button
 }) {
   const gridRef = useRef(null);
   const scrollRef = useRef(null);
@@ -168,7 +169,7 @@ export function Timeline({
   function handleGridClick(e) {
     if (e.target !== gridRef.current) return;
     // A click means "this slot": snap down to the quarter hour (17:07 -> 17:00).
-    onQuickAddAt(Math.min(Math.floor(minutesFromClientY(e.clientY) / 15) * 15, DAY_MINUTES - 15));
+    onAddAtSlot(Math.min(Math.floor(minutesFromClientY(e.clientY) / 15) * 15, DAY_MINUTES - 15));
   }
 
   const hours = Array.from({ length: 25 }, (_, i) => i);
@@ -262,7 +263,7 @@ export function Timeline({
       </div>
       </div>
 
-      <button type="button" className="timeline-fab" onClick={() => onQuickAddAt(isToday ? snapMinutes(now, 15) : 9 * 60)} aria-label="Add activity">
+      <button type="button" className="timeline-fab" onClick={onAdd} aria-label="Add activity" aria-haspopup="dialog">
         <Plus size={24} />
       </button>
     </div>

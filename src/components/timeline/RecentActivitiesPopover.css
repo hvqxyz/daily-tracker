@@ -1,0 +1,128 @@
+.recent-popover {
+  position: absolute;
+  right: 1.1rem;
+  bottom: calc(1.1rem + 54px + 0.6rem); /* just above the + button */
+  z-index: 16;
+  width: min(280px, calc(100vw - 2rem));
+  max-height: min(420px, calc(100% - 54px - 2.5rem));
+  overflow-y: auto;
+  padding: 0.75rem 0.5rem 0.5rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  animation: recent-popover-in .12s ease-out;
+}
+
+@keyframes recent-popover-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+.recent-popover-header {
+  padding: 0 0.5rem 0.5rem;
+}
+
+.recent-popover-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.recent-popover-subtitle {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.recent-popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.recent-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recent-popover-item .icon-emoji {
+  flex: none;
+  width: 1.4rem;
+  text-align: center;
+  font-size: 1.05rem;
+}
+
+.recent-popover-item:hover,
+.recent-popover-item:focus-visible {
+  background: var(--border);
+  outline: none;
+}
+
+.recent-popover-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-popover-duration {
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.recent-popover-empty {
+  margin: 0;
+  padding: 0.4rem 0.5rem 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.recent-popover-divider {
+  height: 1px;
+  margin: 0.4rem 0.25rem 0.5rem;
+  background: var(--gridline);
+}
+
+.recent-popover-create {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent-solid);
+  color: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recent-popover-create:hover {
+  filter: brightness(1.08);
+}
+
+.recent-popover-create:focus-visible {
+  outline: 2px solid var(--accent-solid);
+  outline-offset: 2px;
+}

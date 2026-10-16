@@ -51,62 +51,6 @@
   border-color: var(--accent-solid);
 }
 
-.template-pick-hint {
-  margin: 0.5rem 0 0;
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-}
-
-.template-pick-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  max-height: 9.5rem;
-  overflow-y: auto;
-  padding: 0.1rem 0.4rem 0.1rem 0;
-  overscroll-behavior: contain;
-  scrollbar-color: var(--gridline) transparent;
-  mask-image: linear-gradient(to bottom, transparent 0, #000 0.4rem, #000 calc(100% - 0.8rem), transparent 100%);
-}
-
-.template-pick-items::-webkit-scrollbar {
-  width: 6px;
-}
-
-.template-pick-items::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.template-pick-items::-webkit-scrollbar-thumb {
-  background: var(--gridline);
-  border-radius: 999px;
-}
-
-.template-pick-items::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
-}
-
-.template-pick-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.4rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid var(--gridline);
-  background: var(--page);
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-  font-weight: 600;
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-.template-pick-chip.selected {
-  background: var(--accent-solid);
-  border-color: var(--accent-solid);
-  color: #fff;
-}
-
 .duration-presets {
   display: flex;
   flex-wrap: wrap;

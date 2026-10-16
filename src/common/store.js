@@ -8,6 +8,10 @@ import {
   changedFields, deleteSeriesFrom as deleteSeriesFromState, excludeOccurrence, materializeOccurrence, normalizeRule, occDate, pauseSeries as pauseSeriesState,
   removeSeries, repeatToRule, resolveDay, resumeSeries as resumeSeriesState, splitSeries as splitSeriesState, updateSeries as updateSeriesState,
 } from './recurrence.js';
+import { recordRecent } from './recent-activities.js';
+import {
+  activityFieldsFromTemplateItem, deleteDefinition, migrateLibraryRefs, reportHasNews, resolveTemplateItems, updateDefinition,
+} from './library.js';
 
 const STORAGE_KEY = 'daily-planner-state-v1';
 
@@ -41,10 +45,61 @@ function ensureActivityDictionary(s) {
   return s.activityDictionary ? s : { ...s, activityDictionary: [] };
 }
 
+const LIBRARY_BACKUP_KEY = `${STORAGE_KEY}.pre-library-refs`;
+
+/**
+ * Upgrades that must also run on data coming from elsewhere (a Sheets pull,
+ * another tab): rule defaults, the dictionary, and template items becoming
+ * references to library definitions (common/library.js). Each step is
+ * idempotent. If the library migration throws, the unmigrated state is kept —
+ * every reader still understands old embedded template items.
+ */
+function upgradeState(s) {
+  const base = ensureActivityDictionary(normalizeRecurrences(s));
+  try {
+    const { state: next, report, changed } = migrateLibraryRefs(base);
+    if (!changed) return { state: base, before: base, changed: false };
+    return { state: reportHasNews(report) ? { ...next, libraryNotice: { at: Date.now(), ...report } } : next, before: base, changed: true };
+  } catch (err) {
+    console.error('Activity library migration failed; keeping the previous template format', err);
+    return { state: base, before: base, changed: false };
+  }
+}
+
+/** One copy of the data as it was before template items became library references. */
+function backupBeforeLibraryMigration(before) {
+  try {
+    if (!localStorage.getItem(LIBRARY_BACKUP_KEY)) localStorage.setItem(LIBRARY_BACKUP_KEY, JSON.stringify(before));
+  } catch {
+    // no room for a backup — the migration itself never deletes anything
+  }
+}
+
 // Older snapshots (hard-coded books/movies) are upgraded to generic trackers.
-let state = ensureActivityDictionary(normalizeRecurrences(ensureNotesState(migrateState(load()))));
+let state = (() => {
+  const upgraded = upgradeState(ensureNotesState(migrateState(load())));
+  if (upgraded.changed) backupBeforeLibraryMigration(upgraded.before);
+  return upgraded.state;
+})();
 persist(); // write the upgraded shape back so migrated ids stay stable across reloads
 const listeners = new Set();
+
+// Another tab saved: adopt its data instead of later overwriting it with ours.
+// Data written by a tab still running an older version is upgraded the same
+// way (deterministically, so every tab arrives at the same ids).
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== STORAGE_KEY || !e.newValue) return;
+    try {
+      const upgraded = upgradeState(JSON.parse(e.newValue));
+      state = upgraded.state;
+      if (upgraded.changed) persist();
+      listeners.forEach((l) => l());
+    } catch {
+      // unreadable data from the other tab — keep ours
+    }
+  });
+}
 
 function persist() {
   try {
@@ -146,7 +201,7 @@ export async function connectSync() {
 
     if (await remoteHasData()) {
       const pulled = await pullSnapshot(state);
-      state = normalizeRecurrences(pulled);
+      state = upgradeState(pulled).state;
       persist();
       listeners.forEach((l) => l());
     } else {
@@ -176,7 +231,7 @@ export async function pullFromSheets() {
   try {
     const { pullSnapshot } = await import('./sheets-sync.js');
     const pulled = await pullSnapshot(state);
-    state = normalizeRecurrences(pulled);
+    state = upgradeState(pulled).state;
     persist();
     listeners.forEach((l) => l());
     const now = Date.now();
@@ -237,10 +292,11 @@ export function addTemplate(template) {
   return t;
 }
 
+/** Name / icon / items (library references with their scheduling, in order). */
 export function updateTemplate(id, patch) {
   commit({
     ...state,
-    templates: state.templates.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    templates: state.templates.map((t) => (t.id === id ? { ...t, ...patch, id: t.id } : t)),
   });
 }
 
@@ -265,86 +321,56 @@ export function deleteTemplate(id) {
   commit({ ...state, templates: state.templates.filter((t) => t.id !== id) });
 }
 
-export function addTemplateItem(templateId, item) {
-  const withId = { id: makeId('ti'), ...item };
-  commit({
-    ...state,
-    templates: state.templates.map((t) =>
-      t.id === templateId ? { ...t, items: [...t.items, withId] } : t
-    ),
-  });
-}
-
-export function updateTemplateItem(templateId, itemId, patch) {
-  commit({
-    ...state,
-    templates: state.templates.map((t) =>
-      t.id === templateId
-        ? { ...t, items: t.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) }
-        : t
-    ),
-  });
-}
-
-export function deleteTemplateItem(templateId, itemId) {
-  commit({
-    ...state,
-    templates: state.templates.map((t) =>
-      t.id === templateId ? { ...t, items: t.items.filter((it) => it.id !== itemId) } : t
-    ),
-  });
-}
-
+/**
+ * Adds a template's activities to a day: identity from the library
+ * definitions, scheduling from the template. Items whose definition and
+ * snapshot are both gone are skipped (and counted).
+ */
 export function applyTemplateToDay(dateKey, templateId) {
   const template = state.templates.find((t) => t.id === templateId);
-  if (!template) return;
+  if (!template) return { added: 0, skipped: 0 };
   const day = ensureDay(state, dateKey);
-  const newActivities = template.items.map((item) => activityFromTemplateItem(item));
+  const fields = resolveTemplateItems(template, state.activityDictionary).map(activityFieldsFromTemplateItem);
+  const newActivities = fields.filter(Boolean).map((f) => scheduledActivity(f));
   const days = {
     ...state.days,
     [dateKey]: { ...day, activities: [...day.activities, ...newActivities] },
   };
   commit({ ...state, days });
+  return { added: newActivities.length, skipped: fields.length - newActivities.length };
 }
 
-function activityFromTemplateItem(item) {
-  return {
-    id: makeId('act'),
-    title: item.title,
-    icon: item.icon,
-    categoryId: item.categoryId,
-    priority: item.priority,
-    start: item.start ?? null,
-    duration: item.duration ?? 30,
-    plannedStart: item.start ?? null,
-    plannedDuration: item.duration ?? 30,
-    fixed: item.fixed !== false,
-    status: STATUSES.PLANNED,
-    notes: '',
-    recurrenceId: null,
-    createdAt: Date.now(),
-  };
-}
+export const newTemplateItemId = () => makeId('ti');
 
 // ---------------------------------------------------------------------------
-// Activity dictionary — reusable single activities, kept independent of
-// templates (which bundle several activities into a whole day's plan).
+// Activity Library (stored as `activityDictionary`) — reusable definitions:
+// what an activity is (title, icon, category) and its defaults. Templates
+// reference them by id; scheduled activities keep their own copy.
 
 export function addDictionaryItem(item) {
-  const withId = { id: makeId('ad'), start: null, fixed: true, ...item };
+  const withId = { id: makeId('ad'), start: null, fixed: true, priority: 'required', duration: 30, ...item };
   commit({ ...state, activityDictionary: [...state.activityDictionary, withId] });
   return withId;
 }
 
+/** Changes a definition; templates resolve it live, history keeps its own copy. */
 export function updateDictionaryItem(id, patch) {
-  commit({
-    ...state,
-    activityDictionary: state.activityDictionary.map((it) => (it.id === id ? { ...it, ...patch } : it)),
-  });
+  commit(updateDefinition(state, id, patch));
 }
 
+/** Deletes a definition and removes it from the templates using it (see libraryReferences). */
 export function deleteDictionaryItem(id) {
-  commit({ ...state, activityDictionary: state.activityDictionary.filter((it) => it.id !== id) });
+  commit(deleteDefinition(state, id));
+}
+
+export function dismissLibraryNotice() {
+  const { libraryNotice: _n, ...rest } = state;
+  commit(rest);
+}
+
+/** Remember a successfully scheduled activity for the + button's "Recent activities" list. */
+export function recordRecentActivity(fields, sourceId = null) {
+  commit({ ...state, recentActivities: recordRecent(state.recentActivities, fields, sourceId) });
 }
 
 // ---------------------------------------------------------------------------
@@ -374,11 +400,14 @@ export function addRecurringActivity(dateKey, fields, repeat) {
     title: fields.title,
     icon: fields.icon || '🔁',
     categoryId: fields.categoryId || state.categories[0]?.id,
-    priority: fields.priority || 'should',
+    priority: fields.priority || 'required', // same default as a one-off activity
     start: fields.start ?? null,
     duration: fields.duration ?? 30,
     fixed: fields.fixed !== false,
     notes: fields.notes || '',
+    ...(fields.link ? { link: fields.link } : {}),
+    ...(fields.noteId ? { noteId: fields.noteId } : {}),
+    ...(fields.activityId ? { activityId: fields.activityId } : {}),
     ...schedule,
   }, dateKey);
   commit({ ...state, recurrences: [...state.recurrences, rule] });
@@ -434,8 +463,8 @@ export function setDayReflection(dateKey, patch) {
   commit({ ...state, days: { ...state.days, [dateKey]: next } });
 }
 
-export function addActivity(dateKey, activity) {
-  const day = ensureDay(state, dateKey);
+/** A new scheduled activity with defaults filled and its planned snapshot taken. */
+function scheduledActivity(activity) {
   const newActivity = {
     id: makeId('act'),
     icon: '📌',
@@ -452,7 +481,12 @@ export function addActivity(dateKey, activity) {
   };
   newActivity.plannedStart = newActivity.start;
   newActivity.plannedDuration = newActivity.duration;
+  return newActivity;
+}
 
+export function addActivity(dateKey, activity) {
+  const day = ensureDay(state, dateKey);
+  const newActivity = scheduledActivity(activity);
   const days = { ...state.days, [dateKey]: { ...day, activities: [...day.activities, newActivity] } };
   commit({ ...state, days });
   return newActivity;

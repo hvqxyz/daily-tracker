@@ -23,12 +23,12 @@ const COPY = {
   },
 };
 
-/** "This occurrence, this and following, or the entire series?" */
-export function SeriesScopeModal({ kind, onChoose, onClose }) {
+/** "This occurrence, this and following, or the entire series?" — the choices on their own, for use inside another dialog. */
+export function SeriesScopeChoices({ kind, onChoose, onCancel, showTitle = true }) {
   const c = COPY[kind];
   return (
-    <Modal open onClose={onClose}>
-      <h3>{c.title}</h3>
+    <>
+      {showTitle && <h3>{c.title}</h3>}
       <p className="scope-question">{c.question}</p>
       <div className="scope-options">
         {c.options.map((o) => (
@@ -39,8 +39,16 @@ export function SeriesScopeModal({ kind, onChoose, onClose }) {
         ))}
       </div>
       <div className="app-modal-actions">
-        <Button type="button" variant="subtle" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="subtle" onClick={onCancel}>Cancel</Button>
       </div>
+    </>
+  );
+}
+
+export function SeriesScopeModal({ kind, onChoose, onClose }) {
+  return (
+    <Modal open onClose={onClose}>
+      <SeriesScopeChoices kind={kind} onChoose={onChoose} onCancel={onClose} />
     </Modal>
   );
 }

@@ -19,16 +19,19 @@ import {
   deleteActivity,
   setActivityStatus,
   moveActivityToDay,
+  recordRecentActivity,
+  addDictionaryItem,
 } from '../common/store.js';
-import { todayKey, formatDayHeading, formatDateDMY } from '../common/time.js';
-import { dayStateForDate, categoryInfo } from '../common/model.js';
+import { editorRequest } from '../common/activity-draft.js';
+import { deleteActions, statusActions, submitActions } from '../common/editor-actions.js';
+import { resolveRecent } from '../common/recent-activities.js';
+import { todayKey, formatDayHeading, formatDateDMY, nowMinutes } from '../common/time.js';
+import { dayStateForDate } from '../common/model.js';
 import { DateCarousel } from '../components/nav/DateCarousel.jsx';
 import { Timeline } from '../components/timeline/Timeline.jsx';
 import { CapacityBanner } from '../components/timeline/CapacityBanner.jsx';
 import { DailyReview } from '../components/timeline/DailyReview.jsx';
 import { ActivityEditor } from '../components/timeline/ActivityEditor.jsx';
-import { ActivityQuickActions } from '../components/timeline/ActivityQuickActions.jsx';
-import { SeriesScopeModal } from '../components/timeline/SeriesScopeModal.jsx';
 import { describeRule, occDate } from '../common/recurrence.js';
 import './TodayPage.css';
 
@@ -42,126 +45,116 @@ export function TodayPage({ selectedDate, onSelectedDateChange }) {
   const isToday = selectedDate === today;
   const dayState = dayStateForDate(selectedDate, today);
 
-  const [editorState, setEditorState] = useState(null); // { activity, defaultStart } | null
-  const [quickActivity, setQuickActivity] = useState(null); // activity | null
+  // The activity editor: one dialog for adding and editing. `session` restarts
+  // its content (e.g. occurrence -> whole series) while the dialog stays open.
+  const [editorState, setEditorState] = useState(null); // { activity, preset, defaultStart, explicitSlot, series?, session } | null
   const [updateItemId, setUpdateItemId] = useState(null); // linked tracker item to update after completing
-  const [scope, setScope] = useState(null); // { kind: 'edit'|'delete', activity, patch }
   const [learned, setLearned] = useState(null); // { activity, notes, item } — capture what was learned
-  const liveQuick = quickActivity ? activities.find((a) => a.id === quickActivity.id) || quickActivity : null;
 
   const plannedMinutes = activities.reduce((sum, a) => sum + a.duration, 0);
+  const recent = resolveRecent(state.recentActivities, state.activityDictionary);
   const availableMinutes = state.settings.wakingHoursMinutes;
+  const ruleOf = (activity) => (activity?.recurrenceId ? state.recurrences.find((r) => r.id === activity.recurrenceId) : null);
+  const editing = editorState?.activity || null;
+  // the live version of the activity being edited (it may change underneath, e.g. a drag)
+  const liveEditing = editing?.id ? activities.find((a) => a.id === editing.id) || editing : editing;
 
-  function openNew(defaultStart) {
-    setEditorState({ activity: null, defaultStart, key: `new-${Date.now()}` });
-  }
-
-  function openExisting(activity) {
-    setQuickActivity(activity);
-  }
-
-  function closeQuickActions() {
-    setQuickActivity(null);
-  }
-
-  function handleQuickStatusChange(status) {
-    setActivityStatus(selectedDate, liveQuick.id, status);
-    if (status === 'completed') {
-      const item = liveQuick.link ? ctx.itemById(liveQuick.link.itemId) : null;
-      // Knowledge this activity points at, directly or through its tracker item.
-      const candidates = [];
-      const direct = liveQuick.noteId && state.notes.find((n) => n.id === liveQuick.noteId && !n.archived);
-      if (direct) candidates.push(direct);
-      if (item) for (const n of state.notes) if (!n.archived && n.trackerItemIds.includes(item.id) && !candidates.includes(n)) candidates.push(n);
-      if (candidates.length > 0) setLearned({ activity: liveQuick, notes: candidates, item });
-      else if (item) setUpdateItemId(item.id);
-    }
-    closeQuickActions();
-  }
-
-  function handleQuickEdit() {
-    setEditorState({ activity: liveQuick, defaultStart: null, key: liveQuick.id });
-    closeQuickActions();
-  }
-
-  function handleQuickDelete() {
-    const target = liveQuick;
-    closeQuickActions();
-    if (ruleOf(target)) setScope({ kind: 'delete', activity: target }); // ask: this one, following, or the series
-    else deleteActivity(selectedDate, target.id);
+  function openEditor(request, extra = {}) {
+    setEditorState({ ...request, ...extra, session: `${Date.now()}` });
   }
 
   function closeEditor() {
     setEditorState(null);
   }
 
-  const ruleOf = (activity) => (activity?.recurrenceId ? state.recurrences.find((r) => r.id === activity.recurrenceId) : null);
+  const session = () => ({
+    editing,
+    series: editorState.series || null,
+    rule: editorState.series ? null : ruleOf(editing),
+    dateKey: selectedDate,
+  });
 
-  function handleSubmit(patch) {
-    const { repeat, ...fields } = patch;
-    const editing = editorState.activity;
-    if (!editing) {
-      if (repeat) addRecurringActivity(selectedDate, fields, repeat);
-      else addActivity(selectedDate, fields);
-    } else if (editorState.series) {
-      updateSeries(editorState.series.id, fields, repeat);
-    } else if (ruleOf(editing)) {
-      setScope({ kind: 'edit', activity: editing, patch: fields });
-      return; // the editor stays open until a scope is chosen
-    } else {
-      updateActivity(selectedDate, editing.id, fields);
+  /** Carries out the editor's actions (common/editor-actions.js) with the store. */
+  function run(actions) {
+    let savedDefinitionId = null;
+    let added = null;
+    for (const a of actions) {
+      switch (a.type) {
+        case 'saveDefinition': savedDefinitionId = addDictionaryItem(a.definition).id; break;
+        case 'addActivity': added = addActivity(a.dateKey, withSaved(a.fields, savedDefinitionId)); break;
+        case 'addRecurring': added = addRecurringActivity(a.dateKey, withSaved(a.fields, savedDefinitionId), a.repeat); break;
+        case 'recordRecent': {
+          const fields = withSaved(a.fields, savedDefinitionId);
+          if (added) recordRecentActivity(fields, fields.activityId);
+          break;
+        }
+        case 'updateActivity': updateActivity(a.dateKey, a.id, withSaved(a.fields, savedDefinitionId)); break;
+        case 'updateSeries': updateSeries(a.ruleId, withSaved(a.fields, savedDefinitionId), a.repeat); break;
+        case 'splitSeries': splitSeriesFrom(a.ruleId, a.from, withSaved(a.fields, savedDefinitionId)); break;
+        case 'deleteActivity': deleteActivity(a.dateKey, a.id); break;
+        case 'deleteSeriesFrom': deleteSeriesFrom(a.ruleId, a.from); break;
+        case 'deleteRecurrence': {
+          const rule = state.recurrences.find((r) => r.id === a.ruleId);
+          if (a.confirm && !window.confirm(`Delete the recurring activity "${rule?.title}"? Past days are kept.`)) return false;
+          deleteRecurrence(a.ruleId);
+          break;
+        }
+        case 'setStatus': setActivityStatus(a.dateKey, a.id, a.status); break;
+        default: throw new Error(`Unknown editor action ${a.type}`);
+      }
     }
-    closeEditor();
+    return true;
   }
 
-  function handleDelete() {
-    const editing = editorState.activity;
-    if (editorState.series) {
-      if (window.confirm(`Delete the recurring activity "${editorState.series.title}"? Past days are kept.`)) deleteRecurrence(editorState.series.id);
-    } else if (ruleOf(editing)) {
-      setScope({ kind: 'delete', activity: editing });
-      return;
-    } else if (editing) {
-      deleteActivity(selectedDate, editing.id);
-    }
-    closeEditor();
+  function handleSubmit(patch, opts) {
+    if (run(submitActions(session(), patch, opts))) closeEditor();
   }
 
-  function chooseScope(choice) {
-    const { kind, activity, patch } = scope;
-    const ruleId = activity.recurrenceId;
-    const from = occDate(activity, selectedDate);
-    if (kind === 'edit') {
-      if (choice === 'following') splitSeriesFrom(ruleId, from, patch);
-      else if (choice === 'series') updateSeries(ruleId, patch);
-      // the occurrence you edited always takes exactly what you entered (incl. links/notes)
-      updateActivity(selectedDate, activity.id, patch);
-    } else if (choice === 'occurrence') deleteActivity(selectedDate, activity.id);
-    else if (choice === 'following') deleteSeriesFrom(ruleId, from);
-    else deleteRecurrence(ruleId);
-    setScope(null);
+  function handleDelete(opts) {
+    if (run(deleteActions(session(), opts))) closeEditor();
+  }
+
+  function handleStatusChange(status, unsavedFields) {
+    const target = liveEditing;
+    run(statusActions(session(), status, unsavedFields));
     closeEditor();
+    if (status === 'completed') {
+      const linkTo = unsavedFields?.link !== undefined ? unsavedFields.link : target.link;
+      const noteId = unsavedFields?.noteId !== undefined ? unsavedFields.noteId : target.noteId;
+      const item = linkTo ? ctx.itemById(linkTo.itemId) : null;
+      // Knowledge this activity points at, directly or through its tracker item.
+      const candidates = [];
+      const direct = noteId && state.notes.find((n) => n.id === noteId && !n.archived);
+      if (direct) candidates.push(direct);
+      if (item) for (const n of state.notes) if (!n.archived && n.trackerItemIds.includes(item.id) && !candidates.includes(n)) candidates.push(n);
+      if (candidates.length > 0) setLearned({ activity: target, notes: candidates, item });
+      else if (item) setUpdateItemId(item.id);
+    }
   }
 
   function editSeries() {
-    const rule = ruleOf(liveQuick);
+    const rule = ruleOf(editing);
     if (!rule) return;
-    setEditorState({ activity: { ...rule, id: null }, series: rule, defaultStart: null, key: `series-${rule.id}` });
-    closeQuickActions();
+    // same dialog, new content: the whole series instead of this occurrence
+    openEditor(editorRequest.activity({ ...rule, id: null }), { series: rule });
   }
 
   function togglePause() {
-    const rule = ruleOf(liveQuick);
+    const rule = ruleOf(editing);
     if (!rule) return;
     if (rule.pausedFrom) resumeSeries(rule.id);
-    else pauseSeries(rule.id, occDate(liveQuick, selectedDate));
-    closeQuickActions();
+    else pauseSeries(rule.id, occDate(editing, selectedDate));
+    closeEditor();
   }
 
   function handleMoveToDay(targetDate) {
-    if (editorState.activity) moveActivityToDay(selectedDate, editorState.activity.id, targetDate);
+    if (editing) moveActivityToDay(selectedDate, editing.id, targetDate);
     closeEditor();
   }
+
+  const editingRule = editorState && !editorState.series ? ruleOf(editing) : null;
+  const linkedItem = liveEditing?.link ? ctx.itemById(liveEditing.link.itemId) : null;
+  const linkedTracker = linkedItem ? ctx.trackerById(linkedItem.trackerId) : null;
 
   return (
     <div className="today-page">
@@ -192,62 +185,46 @@ export function TodayPage({ selectedDate, onSelectedDateChange }) {
         categories={state.categories}
         onSetStart={(id, minutes) => updateActivity(selectedDate, id, { start: minutes })}
         onSetDuration={(id, minutes) => updateActivity(selectedDate, id, { duration: minutes })}
-        onOpenActivity={openExisting}
-        onQuickAddAt={openNew}
+        onOpenActivity={(activity) => openEditor(editorRequest.activity(activity))}
+        onAddAtSlot={(minutes) => openEditor(editorRequest.slot(minutes))}
+        onAdd={() => openEditor(editorRequest.button({ isToday, nowMinutes: nowMinutes() }))}
       />
 
       {dayState !== 'draft' && <DailyReview dateKey={selectedDate} activities={activities} categories={state.categories} wellbeing={day.wellbeing ?? null} note={day.note || ''} />}
 
-      {quickActivity && (
-        <ActivityQuickActions
-          activity={liveQuick}
-          dateKey={selectedDate}
-          series={(() => { const r = ruleOf(liveQuick); return r ? { text: describeRule(r, formatDateDMY), paused: Boolean(r.pausedFrom) } : null; })()}
-          onEditSeries={editSeries}
-          onTogglePause={togglePause}
-          linked={(() => { const item = liveQuick.link ? ctx.itemById(liveQuick.link.itemId) : null; const tr = item && ctx.trackerById(item.trackerId); return item && tr ? { item, tracker: tr } : null; })()}
-          trackers={state.trackers}
-          trackerItems={state.trackerItems}
-          itemLabel={ctx.itemLabel}
-          onLink={(trackerId, itemId) => updateActivity(selectedDate, liveQuick.id, { link: { trackerId, itemId }, title: ctx.itemLabel(itemId) })}
-          category={categoryInfo(state.categories, liveQuick.categoryId)}
-          noteLabel={liveQuick.noteId ? (() => { const n = state.notes.find((x) => x.id === liveQuick.noteId); return n ? `${n.icon || '📝'} ${noteTitle(n)}` : null; })() : null}
-          onOpenNote={liveQuick.noteId ? () => { requestNav({ page: 'notes', noteId: liveQuick.noteId }); } : null}
-          linkedLabel={liveQuick.link && ctx.itemById(liveQuick.link.itemId) ? `${ctx.trackerById(liveQuick.link.trackerId)?.icon ?? ''} ${ctx.itemLabel(liveQuick.link.itemId)}` : null}
-          onClose={closeQuickActions}
-          onStatusChange={handleQuickStatusChange}
-          onEdit={handleQuickEdit}
-          onDelete={handleQuickDelete}
-        />
-      )}
-
-      {editorState && (
-        <ActivityEditor
-          key={editorState.key}
-          open
-          onClose={closeEditor}
-          activity={editorState.activity}
-          defaultStart={editorState.defaultStart}
-          dateKey={selectedDate}
-          allowRepeat
-          seriesRule={editorState.series || ruleOf(editorState.activity)}
-          editingSeries={Boolean(editorState.series)}
-          categories={state.categories}
-          templates={state.templates}
-          dictionary={state.activityDictionary}
-          trackers={state.trackers}
-          trackerItems={state.trackerItems}
-          itemLabel={ctx.itemLabel}
-          knowledge={{ state, titleOf: (id) => { const n = state.notes.find((x) => x.id === id); return n ? noteTitle(n) : 'Missing note'; } }}
-          onSubmit={handleSubmit}
-          onDelete={handleDelete}
-          onMoveToDay={handleMoveToDay}
-          allowStatusActions={false}
-          allowMoveToDay={!editorState.series}
-          title={editorState.series ? 'Edit recurring activity' : undefined}
-        />
-      )}
-      {scope && <SeriesScopeModal kind={scope.kind} onChoose={chooseScope} onClose={() => setScope(null)} />}
+      <ActivityEditor
+        open={Boolean(editorState)}
+        sessionKey={editorState?.session}
+        onClose={closeEditor}
+        activity={editorState?.activity}
+        preset={editorState?.preset}
+        defaultStart={editorState?.defaultStart}
+        explicitSlot={editorState?.explicitSlot}
+        recent={recent}
+        dateKey={selectedDate}
+        allowRepeat
+        seriesRule={editorState?.series || editingRule}
+        editingSeries={Boolean(editorState?.series)}
+        series={editingRule ? { text: describeRule(editingRule, formatDateDMY), paused: Boolean(editingRule.pausedFrom) } : null}
+        onEditSeries={editSeries}
+        onTogglePause={togglePause}
+        linked={linkedItem && linkedTracker ? { item: linkedItem, tracker: linkedTracker } : null}
+        onOpenNote={(noteId) => { closeEditor(); requestNav({ page: 'notes', noteId }); }}
+        categories={state.categories}
+        templates={state.templates}
+        dictionary={state.activityDictionary}
+        trackers={state.trackers}
+        trackerItems={state.trackerItems}
+        itemLabel={ctx.itemLabel}
+        knowledge={{ state, titleOf: (id) => { const n = state.notes.find((x) => x.id === id); return n ? noteTitle(n) : 'Missing note'; } }}
+        onSubmit={handleSubmit}
+        onDelete={handleDelete}
+        onStatusChange={handleStatusChange}
+        onMoveToDay={handleMoveToDay}
+        allowStatusActions={!editorState?.series}
+        allowMoveToDay={!editorState?.series}
+        title={editorState?.series ? 'Edit recurring activity' : undefined}
+      />
       {learned && (
         <LearnedModal
           state={state}
@@ -264,3 +241,5 @@ export function TodayPage({ selectedDate, onSelectedDateChange }) {
     </div>
   );
 }
+
+const withSaved = (fields, savedDefinitionId) => (savedDefinitionId ? { ...fields, activityId: savedDefinitionId } : fields);

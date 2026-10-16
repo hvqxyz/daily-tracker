@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/trackers/engine.test.js src/trackers/sync.test.js src/notes/notes.test.js src/common/day-review.test.js src/common/recurrence.test.js"
+    "test": "node --test src/trackers/engine.test.js src/trackers/sync.test.js src/notes/notes.test.js src/common/day-review.test.js src/common/recurrence.test.js src/common/recent-activities.test.js src/common/library.test.js src/common/library-sync.test.js src/common/activity-draft.test.js src/common/editor-actions.test.js"
   },
   "dependencies": {
     "lucide-react": "^1.25.0",

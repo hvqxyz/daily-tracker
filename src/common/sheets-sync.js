@@ -1,5 +1,6 @@
 import { getAccessToken } from './auth.js';
 import { findOrCreateFolder, findFileInFolder, moveFileToFolder } from './drive-api.js';
+import { identityKey, libraryById, resolveTemplateItem } from './library.js';
 
 const API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 const SPREADSHEET_ID_KEY = 'daily-planner-spreadsheet-id';
@@ -34,6 +35,16 @@ const SHEETS = {
   NoteTags: { header: ['Id', 'Name'], cols: 'B' },
   NoteStatuses: { header: ['Id', 'Label', 'Icon', 'Color', 'Review'], cols: 'E' },
   NoteTemplates: { header: ['Id', 'Name', 'Icon', 'BlocksJson'], cols: 'D' },
+  // References that older sheets have no column for, in a sheet of their own:
+  // an app version that predates it neither clears nor rewrites it, so its
+  // rows can never shift out of line with the rows they belong to (a column
+  // appended to an existing sheet would be left stale by such a version).
+  //   Kind 'template-item' -> ActivityId (the library definition)
+  //   Kind 'activity'      -> ActivityId
+  //   Kind 'recurrence'    -> ActivityId, TrackerId, ItemId, NoteId
+  // TemplateItems keeps its full columns (title/icon/category resolved from
+  // the library), so older versions still read complete templates.
+  References: { header: ['OwnerId', 'Kind', 'ActivityId', 'TrackerId', 'ItemId', 'NoteId'], cols: 'F' },
 };
 
 let spreadsheetId = localStorage.getItem(SPREADSHEET_ID_KEY);
@@ -168,9 +179,19 @@ export function stateToRows(state) {
   const categories = state.categories.map((c) => [c.id, c.name, c.icon, c.color]);
 
   const templates = state.templates.map((t) => [t.id, t.name, t.icon]);
+  const byId = libraryById(state.activityDictionary || []);
   const templateItems = state.templates.flatMap((t) =>
-    t.items.map((it) => [it.id, t.id, it.title, it.icon, it.categoryId, it.priority, orEmpty(it.start), it.duration, it.fixed])
+    t.items.map((it) => {
+      const r = resolveTemplateItem(it, byId);
+      // an item with nothing left to identify it is written without a title, so a pull keeps it unresolved
+      return [it.id, t.id, r.unresolvable ? '' : r.title, r.unresolvable ? '' : r.icon, orEmpty(r.categoryId), r.priority, orEmpty(r.start), r.duration, r.fixed];
+    })
   );
+  const references = [
+    ...state.templates.flatMap((t) => t.items.filter((it) => it.activityId).map((it) => [it.id, 'template-item', it.activityId, '', '', ''])),
+    ...Object.values(state.days).flatMap((day) => day.activities.filter((a) => a.activityId).map((a) => [a.id, 'activity', a.activityId, '', '', ''])),
+    ...state.recurrences.filter((r) => r.activityId || r.link || r.noteId).map((r) => [r.id, 'recurrence', r.activityId || '', r.link?.trackerId || '', r.link?.itemId || '', r.noteId || '']),
+  ];
   const activityDictionary = (state.activityDictionary || []).map((it) => [
     it.id, it.title, it.icon, it.categoryId, it.priority, orEmpty(it.start), it.duration, it.fixed,
   ]);
@@ -216,7 +237,7 @@ export function stateToRows(state) {
   const noteStatuses = (state.noteConfig?.statuses || []).map((x) => [x.id, x.label, x.icon || '', x.color || '', x.review ? 'TRUE' : '']);
   const noteTemplates = (state.noteTemplates || []).map((t) => [t.id, t.name, t.icon || '', cellJson(t.blocks.map((b) => ({ ...b, config: stripBlockData(b.config || {}) })))]);
 
-  return { Categories: categories, Templates: templates, TemplateItems: templateItems, ActivityDictionary: activityDictionary, Recurrences: recurrences, Activities: activities, DayMeta: dayMeta, Settings: settings, Trackers: trackers, TrackerItems: trackerItems, TrackerTemplates: trackerTemplates, Notes: notes, NoteBlocks: noteBlocks, NoteCollections: noteCollections, NoteTags: noteTags, NoteStatuses: noteStatuses, NoteTemplates: noteTemplates };
+  return { Categories: categories, Templates: templates, TemplateItems: templateItems, ActivityDictionary: activityDictionary, Recurrences: recurrences, Activities: activities, DayMeta: dayMeta, Settings: settings, Trackers: trackers, TrackerItems: trackerItems, TrackerTemplates: trackerTemplates, Notes: notes, NoteBlocks: noteBlocks, NoteCollections: noteCollections, NoteTags: noteTags, NoteStatuses: noteStatuses, NoteTemplates: noteTemplates, References: references };
 }
 
 /** Pushes the full local state to Sheets, overwriting each sheet's contents. */
@@ -238,27 +259,48 @@ export async function remoteHasData() {
 /** Pulls the full snapshot from Sheets and reconstructs local state shape. */
 export async function pullSnapshot(fallback) {
   await ensureSpreadsheet();
-  const rows = await Promise.all(['Categories', 'Templates', 'TemplateItems', 'ActivityDictionary', 'Recurrences', 'Activities', 'DayMeta', 'Settings', 'Trackers', 'TrackerItems', 'TrackerTemplates', 'Notes', 'NoteBlocks', 'NoteCollections', 'NoteTags', 'NoteStatuses', 'NoteTemplates'].map(readSheet));
+  const rows = await Promise.all(['Categories', 'Templates', 'TemplateItems', 'ActivityDictionary', 'Recurrences', 'Activities', 'DayMeta', 'Settings', 'Trackers', 'TrackerItems', 'TrackerTemplates', 'Notes', 'NoteBlocks', 'NoteCollections', 'NoteTags', 'NoteStatuses', 'NoteTemplates', 'References'].map(readSheet));
   return rowsToState(rows, fallback);
 }
 
 /** Pure inverse of stateToRows: rebuilds local state from the rows read off each sheet. */
 export function rowsToState(rows, fallback) {
-  const [categoriesRows, templatesRows, itemsRows, dictionaryRows = [], recurrenceRows, activityRows, dayMetaRows, settingsRows, trackerRows, trackerItemRows, templateRows, noteRows = [], noteBlockRows = [], noteCollectionRows = [], noteTagRows = [], noteStatusRows = [], noteTemplateRows = []] = rows;
+  const [categoriesRows, templatesRows, itemsRows, dictionaryRows = [], recurrenceRows, activityRows, dayMetaRows, settingsRows, trackerRows, trackerItemRows, templateRows, noteRows = [], noteBlockRows = [], noteCollectionRows = [], noteTagRows = [], noteStatusRows = [], noteTemplateRows = [], referenceRows = []] = rows;
 
   const categories = categoriesRows.filter((r) => r[0]).map(([id, name, icon, color]) => ({ id, name, icon, color }));
+
+  const remoteDictionary = dictionaryRows.filter((r) => r[0]).map(([id, title, icon, categoryId, priority, start, duration, fixed]) => ({
+    id, title, icon, categoryId, priority, start: toMinutesOrNull(start), duration: Number(duration), fixed: fixed === true,
+  }));
+  // An empty remote dictionary never wipes local entries (e.g. first sync from an older sheet).
+  const activityDictionary = remoteDictionary.length ? remoteDictionary : fallback.activityDictionary || [];
+  const defs = libraryById(activityDictionary);
+
+  const refs = new Map();
+  referenceRows.filter((r) => r[0] && r[1]).forEach(([ownerId, kind, activityId, trackerId, itemId, noteId]) => {
+    refs.set(`${kind}:${ownerId}`, { activityId: activityId || null, link: trackerId && itemId ? { trackerId, itemId } : null, noteId: noteId || null });
+  });
 
   const templatesMap = new Map();
   templatesRows.filter((r) => r[0]).forEach(([id, name, icon]) => templatesMap.set(id, { id, name, icon, items: [] }));
   itemsRows.filter((r) => r[0]).forEach(([id, templateId, title, icon, categoryId, priority, start, duration, fixed]) => {
     const t = templatesMap.get(templateId);
     if (!t) return;
-    t.items.push({ id, title, icon, categoryId, priority, start: toMinutesOrNull(start), duration: Number(duration), fixed: fixed === true });
+    const schedule = { priority, start: toMinutesOrNull(start), duration: Number(duration), fixed: fixed === true };
+    const row = { title, icon, categoryId };
+    const def = defs.get(refs.get(`template-item:${id}`)?.activityId);
+    // The reference is trusted only while the row still shows that definition.
+    // Otherwise the row was written by an older version (edited there, or its
+    // library entry was overwritten) and goes back through the store's
+    // migration as an embedded item, so nothing it says is lost.
+    if (def && (!title || identityKey(def) === identityKey(row))) {
+      t.items.push({ id, activityId: def.id, ...schedule, snapshot: { title: def.title, icon: def.icon, categoryId: def.categoryId } });
+    } else if (title) {
+      t.items.push({ id, ...row, ...schedule });
+    } else {
+      t.items.push({ id, activityId: refs.get(`template-item:${id}`)?.activityId || null, ...schedule });
+    }
   });
-
-  const activityDictionary = dictionaryRows.filter((r) => r[0]).map(([id, title, icon, categoryId, priority, start, duration, fixed]) => ({
-    id, title, icon, categoryId, priority, start: toMinutesOrNull(start), duration: Number(duration), fixed: fixed === true,
-  }));
 
   const recurrences = recurrenceRows.filter((r) => r[0]).map(([id, title, icon, categoryId, priority, start, duration, fixed, type, weekdays, freq, interval, monthDay, startDate, endDate, count, pausedFrom, exceptDates, notes, createdAt]) => ({
     id, title, icon, categoryId, priority,
@@ -298,6 +340,7 @@ export function rowsToState(rows, fallback) {
       ...(noteId ? { noteId } : {}),
       ...(occurrenceDate ? { occurrenceDate: String(occurrenceDate) } : {}),
       ...(overridesJson ? { overrides: parseJson(overridesJson, {}) } : {}),
+      ...(refs.get(`activity:${id}`)?.activityId ? { activityId: refs.get(`activity:${id}`).activityId } : {}),
       createdAt: createdAt || Date.now(),
     });
   });
@@ -371,10 +414,16 @@ export function rowsToState(rows, fallback) {
     version: fallback.version,
     categories: categories.length ? categories : fallback.categories,
     templates: [...templatesMap.values()],
-    // An empty remote dictionary never wipes local entries (e.g. first sync from an older sheet).
-    activityDictionary: activityDictionary.length ? activityDictionary : fallback.activityDictionary || [],
-    recurrences,
+    activityDictionary,
+    recurrences: recurrences.map((r) => {
+      const ref = refs.get(`recurrence:${r.id}`);
+      if (!ref) return r;
+      return { ...r, ...(ref.activityId ? { activityId: ref.activityId } : {}), ...(ref.link ? { link: ref.link } : {}), ...(ref.noteId ? { noteId: ref.noteId } : {}) };
+    }),
     days,
+    // Local-only convenience list: not synced, so a pull keeps this device's.
+    recentActivities: fallback.recentActivities || [],
+    ...(fallback.libraryNotice ? { libraryNotice: fallback.libraryNotice } : {}),
     settings: { wakingHoursMinutes: settingsRow[0] ? Number(settingsRow[0]) : fallback.settings.wakingHoursMinutes },
     // An empty remote tracker set never wipes local trackers (e.g. first sync from an older sheet).
     trackers: trackers.length ? trackers : fallback.trackers || [],

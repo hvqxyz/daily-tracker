@@ -163,3 +163,16 @@ test('form <-> rule round trip and descriptions', () => {
   assert.ok(validateRepeat({ ...defaultRepeat(start), mode: 'weekly', weekdays: [] }));
   assert.equal(validateRepeat({ ...defaultRepeat(start), mode: 'weekly' }), '');
 });
+
+test('a rule keeps its link, knowledge note and library reference, and hands them to its occurrences', () => {
+  const link = { trackerId: 'trk', itemId: 'it' };
+  const s = state([rule({ link, noteId: 'n1', activityId: 'ad_gym', weekdays: [], freq: 'daily' })]);
+  const [occ] = resolveDay(s, '2026-09-02').activities;
+  assert.deepEqual([occ.link, occ.noteId, occ.activityId], [link, 'n1', 'ad_gym']);
+  const edited = updateSeries(s, 'r1', { fields: { link: null, noteId: 'n2' } });
+  const [after] = resolveDay(edited, '2026-09-02').activities;
+  assert.deepEqual([after.link, after.noteId, after.activityId], [undefined, 'n2', 'ad_gym']);
+  const split = splitSeries(s, 'r1', '2026-09-05', { fields: { noteId: 'n3' } }, 'r2');
+  assert.equal(split.recurrences.find((r) => r.id === 'r2').noteId, 'n3');
+  assert.deepEqual(split.recurrences.find((r) => r.id === 'r2').link, link);
+});

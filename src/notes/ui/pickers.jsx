@@ -6,19 +6,19 @@ import { Select } from '../../components/inputs/Select.jsx';
 import { searchNotes, noteTitle } from '../knowledge.js';
 
 /** Choose an existing note (search as you type). */
-export function NotePickerModal({ state, title = 'Choose a note', exclude = [], onPick, onClose, allowCreate, onCreate }) {
+/** Search + pick a note, without its own dialog (for use inside another one). */
+export function NotePickerList({ state, exclude = [], onPick, onCancel, allowCreate, onCreate }) {
   const [query, setQuery] = useState('');
   const results = useMemo(
     () => searchNotes(state, { query }).map((r) => r.note).filter((n) => !exclude.includes(n.id)).slice(0, 30),
     [state, query, exclude]
   );
   return (
-    <Modal open onClose={onClose} className="nt-modal">
-      <h3>{title}</h3>
+    <>
       <TextInput value={query} onChange={setQuery} placeholder="Search notes…" autoFocus />
       <div className="nt-picker-list">
         {results.map((n) => (
-          <button type="button" key={n.id} className="nt-picker-row" onClick={() => { onPick(n); onClose(); }}>
+          <button type="button" key={n.id} className="nt-picker-row" onClick={() => onPick(n)}>
             <span className="nt-picker-icon">{n.icon || '📄'}</span>
             <span>{noteTitle(n)}</span>
           </button>
@@ -26,9 +26,25 @@ export function NotePickerModal({ state, title = 'Choose a note', exclude = [], 
         {results.length === 0 && <p className="nt-muted">No matching notes.</p>}
       </div>
       <div className="app-modal-actions">
-        {allowCreate && query.trim() && <Button type="button" variant="secondary" onClick={() => { onCreate(query.trim()); onClose(); }}>Create “{query.trim()}”</Button>}
-        <Button type="button" variant="subtle" onClick={onClose}>Cancel</Button>
+        {allowCreate && query.trim() && <Button type="button" variant="secondary" onClick={() => onCreate(query.trim())}>Create “{query.trim()}”</Button>}
+        <Button type="button" variant="subtle" onClick={onCancel}>Cancel</Button>
       </div>
+    </>
+  );
+}
+
+export function NotePickerModal({ state, title = 'Choose a note', exclude = [], onPick, onClose, allowCreate, onCreate }) {
+  return (
+    <Modal open onClose={onClose} className="nt-modal">
+      <h3>{title}</h3>
+      <NotePickerList
+        state={state}
+        exclude={exclude}
+        onPick={(n) => { onPick(n); onClose(); }}
+        onCancel={onClose}
+        allowCreate={allowCreate}
+        onCreate={(q) => { onCreate(q); onClose(); }}
+      />
     </Modal>
   );
 }

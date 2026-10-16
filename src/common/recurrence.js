@@ -5,6 +5,7 @@
 // `occurrenceDate` so the rule never generates it a second time.
 //
 //   rule: { id, title, icon, categoryId, priority, start, duration, fixed, notes,
+//           link?, noteId?, activityId? (the library definition it came from),
 //           freq: 'daily'|'weekly'|'monthly', interval, weekdays (Mon=0), monthDay (1-31 | 'last'),
 //           startDate, endDate, count, pausedFrom, exceptDates[], createdAt }
 
@@ -125,6 +126,9 @@ export function occurrenceOf(rule, dateKey) {
     fixed: rule.fixed !== false,
     status: 'planned',
     notes: rule.notes || '',
+    ...(rule.link ? { link: rule.link } : {}),
+    ...(rule.noteId ? { noteId: rule.noteId } : {}),
+    ...(rule.activityId ? { activityId: rule.activityId } : {}),
     overrides: {},
     createdAt: rule.createdAt || 0,
   };
@@ -224,6 +228,9 @@ export function validateRepeat(repeat) {
 // Series operations (pure state -> state)
 
 const ACTIVITY_FIELDS = ['title', 'icon', 'categoryId', 'priority', 'start', 'duration', 'fixed', 'notes'];
+// Kept on the rule (and handed to new occurrences) but not pushed onto stored
+// occurrences: those may have been linked individually.
+const RULE_FIELDS = [...ACTIVITY_FIELDS, 'link', 'noteId', 'activityId'];
 const pick = (obj, keys) => Object.fromEntries(keys.filter((k) => k in obj).map((k) => [k, obj[k]]));
 
 const mapDays = (state, fn) => {
@@ -260,7 +267,7 @@ function propagate(state, ruleId, fields, fromDate = null) {
 /** Edit the whole series: schedule and/or activity fields. */
 export function updateSeries(state, ruleId, { fields = {}, schedule = null }) {
   // the anchor date and a pause survive an edit of the schedule
-  const next = mapRule(state, ruleId, (r) => ({ ...r, ...pick(fields, ACTIVITY_FIELDS), ...(schedule || {}), startDate: r.startDate, pausedFrom: r.pausedFrom }));
+  const next = mapRule(state, ruleId, (r) => ({ ...r, ...pick(fields, RULE_FIELDS), ...(schedule || {}), startDate: r.startDate, pausedFrom: r.pausedFrom }));
   return propagate(next, ruleId, fields);
 }
 
@@ -272,7 +279,7 @@ export function splitSeries(state, ruleId, dateKey, { fields = {}, schedule = nu
 
   const fresh = {
     ...rule,
-    ...pick(fields, ACTIVITY_FIELDS),
+    ...pick(fields, RULE_FIELDS),
     ...(schedule || {}),
     id: newId,
     startDate: dateKey,
